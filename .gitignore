@@ -1,21 +1,17 @@
 # 設定ファイル（ローカル開発用、実値を含む）
 config.js
 config.local.js
-# config.js は管理画面から自動生成され、Dropbox に配置
 
-# テスト用ファイル
-test.pdf
-test_ver*.pdf
+# メディアファイル（生徒データを含むため）
+*.pdf
 *.HEIC
-文書名*.pdf
-文書名*.jpg
-IMG_*.HEIC
-.claude/
+*.heic
+*.jpg
+*.jpeg
+*.png
 
-# 実験用フォルダ（個人情報を含む）
-_redact_test/original/
-_redact_test/redacted/
-_redact_test/results/
+# テスト・実験用フォルダ（個人情報を含むため）
+_redact_test/
 
 # OS
 .DS_Store
