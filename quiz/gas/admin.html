@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>提出期間管理</title>
+  <style>
+    :root {
+      --bg: #f5f4f0;
+      --surface: #fff;
+      --border: #d8d4cc;
+      --text: #1a1a18;
+      --text-sub: #6b6860;
+      --accent: #2c5f8a;
+      --accent-light: #e8f0f7;
+      --success: #2a7a4b;
+      --success-light: #e8f5ee;
+      --error: #b83232;
+      --error-light: #fdf0f0;
+      --warning: #7a5c1a;
+      --warning-light: #fdf6e8;
+      --active-bg: #fffbe6;
+      --active-border: #f0c040;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 32px 16px 64px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: var(--text-sub); margin-bottom: 32px; }
+
+    /* ── テーブル ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .period-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 32px;
+      font-size: 13px;
+    }
+    .period-table th {
+      background: var(--bg);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
+    }
+    .period-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    .period-table tr:last-child td { border-bottom: none; }
+    .period-table tr.is-active { background: var(--active-bg); }
+    .badge-active {
+      display: inline-block;
+      background: var(--active-border);
+      color: #5a3c00;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge-past {
+      display: inline-block;
+      background: var(--border);
+      color: var(--text-sub);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .btn-delete {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 12px;
+      color: var(--text-sub);
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .btn-delete:hover { background: var(--error-light); border-color: var(--error); color: var(--error); }
+    .empty-row td { color: var(--text-sub); text-align: center; padding: 24px; }
+
+    /* ── フォーム ── */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+    .form-title { font-size: 15px; font-weight: 700; margin-bottom: 20px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 80px 1fr 1fr 90px;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 560px) {
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .form-grid .f-round { grid-column: 1 / -1; }
+      .form-grid .f-pages { grid-column: 1 / -1; }
+    }
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .field input[type="number"],
+    .field input[type="datetime-local"],
+    .field input[type="text"] {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color 0.15s;
+    }
+    .field input:focus { outline: none; border-color: var(--accent); background: #fff; }
+    .field-memo { margin-bottom: 16px; }
+    .field-memo input { width: 100%; }
+
+    /* ── 枚数カウンター ── */
+    .counter-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .counter-wrap input[type="number"] {
+      width: 44px;
+      text-align: center;
+      padding: 9px 4px;
+      -moz-appearance: textfield;
+    }
+    .counter-wrap input[type="number"]::-webkit-inner-spin-button,
+    .counter-wrap input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .counter-btn {
+      width: 32px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      font-size: 16px;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--text-sub);
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .counter-btn:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+
+    .btn-save {
+      padding: 11px 28px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+    }
+    .btn-save:hover:not(:disabled) { background: #1e4a6e; }
+    .btn-save:disabled { background: var(--border); color: var(--text-sub); cursor: not-allowed; }
+    .btn-clear {
+      padding: 11px 16px;
+      background: none;
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      margin-left: 8px;
+    }
+
+    /* ── クラス設定フォーム ── */
+    .class-form-grid {
+      display: grid;
+      grid-template-columns: 80px 1fr 80px;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 480px) {
+      .class-form-grid { grid-template-columns: 1fr 1fr; }
+      .class-form-grid .f-year { grid-column: 1 / -1; }
+    }
+
+    /* ── アラート ── */
+    .alert {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-top: 14px;
+      line-height: 1.6;
+    }
+    .alert.visible { display: block; }
+    .alert.error   { background: var(--error-light); color: var(--error); border: 1px solid #e8b4b4; }
+    .alert.success { background: var(--success-light); color: var(--success); border: 1px solid #a8d8bc; }
+
+    /* ── config.js ダウンロード ── */
+    .download-section {
+      display: none;
+      background: var(--accent-light);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 14px;
+    }
+    .download-section.visible { display: block; }
+    .download-section h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .download-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+    .download-btn:hover { background: #1e4a6e; }
+    .instructions {
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.8;
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+    .instructions ol { margin-left: 20px; }
+    .instructions li { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>提出期間管理</h1>
+  <p class="subtitle">レポート提出期間の設定・確認ができます</p>
+
+  <!-- 期間一覧 -->
+  <p class="section-title">設定済みの期間</p>
+  <table class="period-table">
+    <thead>
+      <tr>
+        <th>回</th>
+        <th>開始</th>
+        <th>終了</th>
+        <th>メモ</th>
+        <th>枚数</th>
+        <th>クラス</th>
+        <th>アラート件数</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="periodTableBody">
+      <tr class="empty-row"><td colspan="8">読み込み中...</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 追加フォーム -->
+  <div class="form-card">
+    <div class="form-title">期間を追加・更新</div>
+    <div class="form-grid">
+      <div class="field f-round">
+        <label>回</label>
+        <input type="number" id="fRound" min="1" placeholder="1">
+      </div>
+      <div class="field">
+        <label>開始日時</label>
+        <input type="datetime-local" id="fStart">
+      </div>
+      <div class="field">
+        <label>終了日時</label>
+        <input type="datetime-local" id="fEnd">
+      </div>
+      <div class="field f-pages">
+        <label>枚数</label>
+        <div class="counter-wrap">
+          <button type="button" class="counter-btn" id="btnPagesDec">−</button>
+          <input type="number" id="fPages" value="2" min="1" max="10">
+          <button type="button" class="counter-btn" id="btnPagesInc">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="field field-memo">
+      <label>メモ（任意）</label>
+      <input type="text" id="fMemo" placeholder="例：1学期中間考査">
+    </div>
+    <div class="field field-memo">
+      <label>クラス（空=全クラス共通）</label>
+      <input type="text" id="fClasses" placeholder="例：2E　※特定クラスのみ受け付ける場合に入力">
+    </div>
+    <button class="btn-save" id="btnSave">保存</button>
+    <button class="btn-clear" id="btnClear">クリア</button>
+    <div class="alert" id="formAlert"></div>
+  </div>
+</div>
+
+<script>
+  // ── 初期読み込み ──────────────────────────────
+  loadPeriods();
+
+  function loadPeriods() {
+    google.script.run
+      .withSuccessHandler(renderTable)
+      .withFailureHandler(e => {
+        document.getElementById('periodTableBody').innerHTML =
+          `<tr class="empty-row"><td colspan="8" style="color:var(--error)">読み込みエラー: ${e.message}</td></tr>`;
+      })
+      .getPeriods();
+  }
+
+  // ── テーブル描画 ──────────────────────────────
+  function renderTable(periods) {
+    const tbody = document.getElementById('periodTableBody');
+    if (!periods.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">まだ期間が登録されていません</td></tr>';
+      return;
+    }
+
+    const now = new Date();
+    tbody.innerHTML = periods.map(p => {
+      const start  = new Date(p.start);
+      const end    = new Date(p.end);
+      const active = now >= start && now <= end;
+      const past   = now > end;
+      const badge  = active ? '<span class="badge-active">受付中</span>'
+                   : past   ? '<span class="badge-past">終了</span>'
+                   : '';
+      const clsLabel   = p.classes ? `<strong style="color:var(--accent)">${p.classes}</strong>` : '<span style="color:var(--text-sub)">全クラス</span>';
+      const escapedCls = JSON.stringify(p.classes || '');
+      return `
+        <tr class="${active ? 'is-active' : ''}">
+          <td><strong>第${p.round}回</strong>${badge}</td>
+          <td>${p.start}</td>
+          <td>${p.end}</td>
+          <td style="color:var(--text-sub)">${p.memo || ''}</td>
+          <td style="font-weight:700">${p.pageCount || 2}枚</td>
+          <td>${clsLabel}</td>
+          <td style="font-weight:700; color:${p.alertCount > 0 ? 'var(--error)' : 'var(--text-sub)'}">${p.alertCount > 0 ? p.alertCount : '—'}</td>
+          <td>
+            <button class="btn-delete" onclick="deletePeriod(${p.round}, ${escapedCls})">削除</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // ── 枚数カウンター ────────────────────────────
+  document.getElementById('btnPagesDec').addEventListener('click', () => {
+    const el = document.getElementById('fPages');
+    el.value = Math.max(1, Number(el.value) - 1);
+  });
+  document.getElementById('btnPagesInc').addEventListener('click', () => {
+    const el = document.getElementById('fPages');
+    el.value = Math.min(10, Number(el.value) + 1);
+  });
+
+  // ── 保存 ─────────────────────────────────────
+  document.getElementById('btnSave').addEventListener('click', () => {
+    const round   = document.getElementById('fRound').value;
+    const start   = document.getElementById('fStart').value;
+    const end     = document.getElementById('fEnd').value;
+    const memo    = document.getElementById('fMemo').value;
+    const pages   = document.getElementById('fPages').value;
+    const classes = document.getElementById('fClasses').value.trim();
+
+    if (!round || !start || !end) {
+      showAlert('error', '回・開始日時・終了日時はすべて必須です');
+      return;
+    }
+
+    const btn = document.getElementById('btnSave');
+    btn.disabled = true;
+    btn.textContent = '保存中...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false;
+        btn.textContent = '保存';
+        if (res.ok) {
+          showAlert('success', `第${round}回${classes ? ' ('+classes+')' : ''}の期間を保存しました`);
+          clearForm();
+          loadPeriods();
+        } else {
+          showAlert('error', res.error);
+        }
+      })
+      .withFailureHandler(e => {
+        btn.disabled = false;
+        btn.textContent = '保存';
+        showAlert('error', '通信エラーが発生しました');
+      })
+      .savePeriod(Number(round), start, end, memo, Number(pages), classes);
+  });
+
+  // ── 削除 ─────────────────────────────────────
+  function deletePeriod(round, classes) {
+    const clsNote = classes ? ` (${classes})` : '';
+    if (!confirm(`第${round}回${clsNote}の期間を削除しますか？`)) return;
+    google.script.run
+      .withSuccessHandler(() => loadPeriods())
+      .withFailureHandler(e => alert('削除に失敗しました'))
+      .deletePeriod(round, classes);
+  }
+
+  // ── クリア ────────────────────────────────────
+  document.getElementById('btnClear').addEventListener('click', clearForm);
+  function clearForm() {
+    document.getElementById('fRound').value   = '';
+    document.getElementById('fStart').value   = '';
+    document.getElementById('fEnd').value     = '';
+    document.getElementById('fMemo').value    = '';
+    document.getElementById('fPages').value   = '2';
+    document.getElementById('fClasses').value = '';
+    hideAlert();
+  }
+
+  // ── アラート ──────────────────────────────────
+  function showAlert(type, msg) {
+    const el = document.getElementById('formAlert');
+    el.className = `alert visible ${type}`;
+    el.textContent = msg;
+  }
+  function hideAlert() {
+    document.getElementById('formAlert').className = 'alert';
+  }
+</script>
+
+<!-- ═══════════════════════════════════════════
+  クラス設定セクション
+═══════════════════════════════════════════ -->
+<style>
+  .class-section { margin-top: 40px; }
+</style>
+
+<div class="container class-section">
+  <p class="section-title">クラス設定</p>
+  <table class="period-table">
+    <thead>
+      <tr>
+        <th>年度</th>
+        <th>クラス</th>
+        <th>人数上限</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="classTableBody">
+      <tr class="empty-row"><td colspan="4">読み込み中...</td></tr>
+    </tbody>
+  </table>
+
+  <div class="form-card">
+    <div class="form-title">クラスを追加・更新</div>
+    <div class="class-form-grid">
+      <div class="field f-year">
+        <label>年度</label>
+        <input type="number" id="cYear" placeholder="2026">
+      </div>
+      <div class="field">
+        <label>クラス（例：2E）</label>
+        <input type="text" id="cClass" placeholder="2E" maxlength="10">
+      </div>
+      <div class="field">
+        <label>人数上限</label>
+        <input type="number" id="cMax" value="40" min="1" max="99">
+      </div>
+    </div>
+    <button class="btn-save" id="btnClassSave">保存</button>
+    <button class="btn-clear" id="btnClassClear">クリア</button>
+    <div class="alert" id="classAlert"></div>
+    <div class="download-section" id="downloadSection">
+      <h3>✅ config.js を生成しました</h3>
+      <div style="margin-bottom: 12px;">
+        <button type="button" class="download-btn" id="downloadBtn">📥 ダウンロード</button>
+        <button type="button" class="download-btn" id="copyBtn" style="background: #22c47a; margin-left: 8px;">📋 コピー</button>
+      </div>
+      <textarea id="configText" style="width:100%; height:200px; font-family:monospace; font-size:11px; padding:8px; border:1px solid var(--border); border-radius:6px; margin-bottom:12px;" readonly></textarea>
+      <div class="instructions">
+        <ol>
+          <li><strong>ダウンロード</strong>：ファイルで保存 または <strong>コピー</strong>：テキストをコピー</li>
+          <li>Dropbox/report-system/config.js に上書き</li>
+          <li>ターミナルで以下を実行：
+            <pre style="background:#f0f0f0; padding:8px; border-radius:4px; margin-top:4px;">cd Dropbox/report-system
+git add config.js
+git commit -m "Update class config"
+git push</pre>
+          </li>
+          <li>完了！GitHub Pages に反映されます</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── クラス設定: 初期読み込み ──────────────────
+  const currentYear = new Date().getFullYear();
+  document.getElementById('cYear').value = currentYear;
+
+  loadClasses();
+
+  function loadClasses() {
+    google.script.run
+      .withSuccessHandler(renderClassTable)
+      .withFailureHandler(() => {
+        document.getElementById('classTableBody').innerHTML =
+          '<tr class="empty-row"><td colspan="4" style="color:var(--error)">読み込みエラー</td></tr>';
+      })
+      .getClassConfigs(null);
+  }
+
+  function renderClassTable(configs) {
+    const tbody = document.getElementById('classTableBody');
+    if (!configs.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="4">クラスが登録されていません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = configs.map(c => `
+      <tr>
+        <td>${c.year}</td>
+        <td><strong>${c.class}</strong></td>
+        <td>${c.max}名</td>
+        <td>
+          <button class="btn-delete" onclick="deleteClass('${c.year}','${c.class}')">削除</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  // ── クラス設定: 保存 ──────────────────────────
+  document.getElementById('btnClassSave').addEventListener('click', () => {
+    const year = document.getElementById('cYear').value.trim();
+    const cls  = document.getElementById('cClass').value.trim();
+    const max  = document.getElementById('cMax').value;
+
+    if (!year || !cls) {
+      showClassAlert('error', '年度とクラスは必須です');
+      return;
+    }
+
+    const btn = document.getElementById('btnClassSave');
+    btn.disabled = true; btn.textContent = '保存中...';
+
+    google.script.run
+      .withSuccessHandler(res => {
+        btn.disabled = false; btn.textContent = '保存';
+        if (res.ok) {
+          showClassAlert('success', `${year}年度 ${cls} を保存しました`);
+          clearClassForm();
+          loadClasses();
+
+          // config.js を生成
+          google.script.run
+            .withSuccessHandler(result => {
+              if (result.ok && result.downloadUrl) {
+                showDownloadSection(result.downloadUrl, result.configText);
+              }
+            })
+            .generateConfigJs(year);
+        } else {
+          showClassAlert('error', res.error);
+        }
+      })
+      .withFailureHandler(() => {
+        btn.disabled = false; btn.textContent = '保存';
+        showClassAlert('error', '通信エラーが発生しました');
+      })
+      .saveClassConfig(year, cls, Number(max));
+  });
+
+  // ── ダウンロードセクション表示 ────────────────
+  let currentConfigContent = '';
+  function showDownloadSection(downloadUrl, configText) {
+    const section = document.getElementById('downloadSection');
+    const textArea = document.getElementById('configText');
+    currentConfigContent = configText || '';
+    textArea.value = currentConfigContent;
+
+    // ダウンロードボタン
+    document.getElementById('downloadBtn').onclick = async () => {
+      try {
+        // File System Access API で保存場所を選択
+        if (window.showSaveFilePicker) {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: 'config.js',
+            types: [{ description: 'JavaScript Files', accept: { 'text/plain': ['.js'] } }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(configText);
+          await writable.close();
+          showClassAlert('success', 'config.js を保存しました');
+        } else {
+          throw new Error('この機能はお使いのブラウザでサポートされていません');
+        }
+      } catch (err) {
+        console.error('ダウンロードエラー:', err);
+        if (err.name === 'AbortError') return; // ユーザーがキャンセル
+        // フォールバック：通常のダウンロード
+        console.log('フォールバック：通常のダウンロードを使用');
+        const blob = new Blob([configText], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'config.js';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    // コピーボタン
+    document.getElementById('copyBtn').onclick = () => {
+      textArea.select();
+      document.execCommand('copy');
+      alert('クリップボードにコピーしました！');
+    };
+
+    section.classList.add('visible');
+  }
+
+  // ── クラス設定: 削除 ──────────────────────────
+  function deleteClass(year, cls) {
+    if (!confirm(`${year}年度 ${cls} を削除しますか？`)) return;
+    google.script.run
+      .withSuccessHandler(() => {
+        showClassAlert('success', `${year}年度 ${cls} を削除しました`);
+        loadClasses();
+
+        // config.js を再生成して表示
+        google.script.run
+          .withSuccessHandler(result => {
+            if (result.ok && result.downloadUrl) {
+              showDownloadSection(result.downloadUrl, result.configText);
+            }
+          })
+          .generateConfigJs(year);
+      })
+      .withFailureHandler(() => {
+        showClassAlert('error', '削除に失敗しました');
+      })
+      .deleteClassConfig(year, cls);
+  }
+
+  // ── クラス設定: クリア ────────────────────────
+  document.getElementById('btnClassClear').addEventListener('click', clearClassForm);
+  function clearClassForm() {
+    document.getElementById('cYear').value  = currentYear;
+    document.getElementById('cClass').value = '';
+    document.getElementById('cMax').value   = '40';
+    hideClassAlert();
+  }
+
+  function showClassAlert(type, msg) {
+    const el = document.getElementById('classAlert');
+    el.className = `alert visible ${type}`;
+    el.textContent = msg;
+  }
+  function hideClassAlert() {
+    document.getElementById('classAlert').className = 'alert';
+  }
+</script>
+</body>
+</html>

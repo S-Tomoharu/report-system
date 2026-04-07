@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>物理レポート提出</title>
+  <style>
+    :root {
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --border: #d8d4cc;
+      --text: #1a1a18;
+      --text-sub: #6b6860;
+      --accent: #2c5f8a;
+      --accent-light: #e8f0f7;
+      --success: #2a7a4b;
+      --success-light: #e8f5ee;
+      --error: #b83232;
+      --error-light: #fdf0f0;
+      --warning: #7a5c1a;
+      --warning-light: #fdf6e8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+    .container { max-width: 560px; margin: 0 auto; }
+
+    header { margin-bottom: 28px; }
+    .label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    h1 span {
+      display: block;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-sub);
+      margin-top: 4px;
+      letter-spacing: 0;
+    }
+
+    /* ── 生徒情報 ── */
+    .student-info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+    .student-info-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .student-info-field { display: flex; flex-direction: column; gap: 5px; }
+    .student-info-field label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      letter-spacing: 0.04em;
+    }
+    .student-select {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .student-select:focus { outline: none; border-color: var(--accent); background: #fff; }
+    .student-select:disabled { opacity: 0.5; cursor: not-allowed; }
+    .student-info-field.f-class .student-select { min-width: 90px; }
+    .student-info-field.f-num  .student-select { min-width: 72px; }
+    .student-round {
+      font-size: 13px;
+      color: var(--text-sub);
+      padding-bottom: 9px;
+      white-space: nowrap;
+    }
+
+    /* ── ステップ ── */
+    .steps {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      background: var(--border);
+      color: var(--text-sub);
+      transition: all 0.3s;
+    }
+    .step-label {
+      font-size: 11px;
+      color: var(--text-sub);
+      white-space: nowrap;
+      transition: color 0.3s;
+    }
+    .step-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin: 0 4px;
+      min-width: 12px;
+    }
+    .step.active .step-num { background: var(--accent); color: white; }
+    .step.active .step-label { color: var(--accent); font-weight: 600; }
+    .step.done .step-num { background: var(--success); color: white; }
+    .step.done .step-num .num-text { display: none; }
+    .step.done .step-num::after { content: '✓'; }
+    @media (max-width: 400px) { .step-label { display: none; } }
+
+    /* ── カード ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-sub);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    /* ── アップロードエリア ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg);
+      position: relative;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .upload-icon { font-size: 32px; margin-bottom: 10px; display: block; }
+    .upload-text { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .upload-sub { font-size: 12px; color: var(--text-sub); }
+
+    /* ── 画像リスト ── */
+    .image-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .image-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .image-thumb {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: var(--border);
+    }
+    .image-thumb.previewable {
+      cursor: zoom-in;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .image-thumb.previewable:hover {
+      transform: scale(1.12);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    /* ── 拡大モーダル ── */
+    #previewModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.88);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #previewModal.open { display: flex; }
+    #previewImg {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: 6px;
+      object-fit: contain;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    #previewClose {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    #previewClose:hover { background: rgba(255,255,255,0.3); }
+    .image-meta {
+      flex: 1;
+      min-width: 0;
+    }
+    .image-name {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .image-size {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+    .image-page {
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+    .btn-remove {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-sub);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-remove:hover { background: var(--error-light); border-color: var(--error); color: var(--error); }
+    .image-item.error { border-color: var(--error); background: var(--error-light); }
+    .image-item.processing { opacity: 0.7; }
+    .image-item.drag-over { border-color: var(--accent); background: var(--accent-light); }
+    .drag-handle {
+      cursor: grab;
+      color: var(--border);
+      font-size: 18px;
+      padding: 2px 4px;
+      flex-shrink: 0;
+      user-select: none;
+      line-height: 1;
+    }
+    .drag-handle:hover { color: var(--text-sub); }
+    .drag-handle:active { cursor: grabbing; }
+    .omr-badge {
+      display: inline-block;
+      background: var(--success-light);
+      border: 1px solid #a8d8bc;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--success);
+      margin-top: 3px;
+    }
+    .omr-badge.warn {
+      background: var(--warning-light);
+      border-color: #e0c880;
+      color: var(--warning);
+    }
+
+    .add-more-btn {
+      width: 100%;
+      padding: 10px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: none;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text-sub);
+      font-family: inherit;
+      transition: all 0.2s;
+      margin-top: 8px;
+      position: relative;
+    }
+    .add-more-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .add-more-btn input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── ステータス ── */
+    .status {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    .status.visible { display: block; }
+    .status.loading { background: var(--accent-light); color: var(--accent); border: 1px solid #b8d4ea; }
+    .status.success { background: var(--success-light); color: var(--success); border: 1px solid #a8d8bc; }
+    .status.error   { background: var(--error-light); color: var(--error); border: 1px solid #e8b4b4; }
+    .status.warning { background: var(--warning-light); color: var(--warning); border: 1px solid #e0c87a; }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(44,95,138,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── ボタン ── */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 8px;
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover:not(:disabled) { background: #1e4a6e; transform: translateY(-1px); }
+    .btn-primary:disabled { background: var(--border); color: var(--text-sub); cursor: not-allowed; }
+
+    /* ── 完了画面 ── */
+    #panel-done { display: none; text-align: center; padding: 40px 20px; }
+    #panel-done.visible { display: block; }
+    .done-icon { font-size: 56px; margin-bottom: 16px; }
+    .done-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .done-msg { font-size: 14px; color: var(--text-sub); line-height: 1.7; }
+    .done-files {
+      margin: 20px 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 13px;
+    }
+    .done-files-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .done-files li { list-style: none; padding: 3px 0; color: var(--text-sub); }
+    .done-files li::before { content: '✓ '; color: var(--success); font-weight: 700; }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 32px;
+    }
+  </style>
+<!-- heic2any は削除（古いlibheifで新iPhoneのHEICに非対応のため）→ libheif-js を遅延ロードで代替 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- 設定ファイルの読み込み -->
+<script src="../../config.js"></script>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <p class="label">Report Submission</p>
+      <h1>レポート提出
+        <span>レポートをアップロードしてください</span>
+      </h1>
+    </header>
+
+    <div class="student-info-card">
+      <div class="student-info-row">
+        <div class="student-info-field f-class">
+          <label>クラス</label>
+          <select class="student-select" id="selClass">
+            <option value="">-- 選択 --</option>
+          </select>
+        </div>
+        <div class="student-info-field f-num">
+          <label>出席番号</label>
+          <select class="student-select" id="selNum" disabled>
+            <option value="">-- 選択 --</option>
+          </select>
+        </div>
+        <div class="student-round" id="roundLabel"></div>
+      </div>
+    </div>
+
+    <!-- ステップインジケーター -->
+    <div class="steps">
+      <div class="step active" id="step1">
+        <div class="step-num"><span class="num-text">1</span></div>
+        <div class="step-label">アップロード</div>
+      </div>
+      <div class="step-line"></div>
+      <div class="step" id="step2">
+        <div class="step-num"><span class="num-text">2</span></div>
+        <div class="step-label">完了</div>
+      </div>
+    </div>
+
+    <!-- ステータス -->
+    <div class="status" id="status"></div>
+
+    <!-- STEP 1: アップロード -->
+    <div id="panel-upload">
+      <div class="card">
+        <p class="card-title">写真を選択</p>
+        <div class="upload-zone" id="uploadZone">
+          <input type="file" id="fileInput" accept="image/*" multiple>
+          <span class="upload-icon">📷</span>
+          <p class="upload-text">タップして写真を選択</p>
+          <p class="upload-sub">JPG・PNG 対応 / 複数枚まとめて選択可</p>
+        </div>
+        <div class="image-list" id="imageList"></div>
+        <button class="add-more-btn" id="addMoreBtn" style="display:none;">
+          <input type="file" id="addMoreInput" accept="image/*" multiple>
+          ＋ 枚数を追加する
+        </button>
+      </div>
+
+      <div id="pageCountInfo" style="display:none; font-size:13px; padding:10px 14px; border-radius:8px; margin-top:10px;"></div>
+      <p id="submitHint" style="display:none; font-size:12px; color:var(--text-sub); text-align:center; margin-top:14px; margin-bottom:6px;">
+        画像をタップして内容を確認し、問題がなければ提出してください
+      </p>
+      <button class="btn btn-primary" id="submitBtn" disabled>
+        提出する
+      </button>
+    </div>
+
+    <!-- STEP 3: 完了 -->
+    <div id="panel-done">
+      <div class="done-icon">✅</div>
+      <div class="done-title">提出完了</div>
+      <div class="done-msg">レポートを受け付けました。<br>お疲れさまでした。</div>
+      <div class="done-files">
+        <div class="done-files-title">保存されたファイル</div>
+        <ul id="doneFileList"></ul>
+      </div>
+    </div>
+
+    <footer>アップロードした画像は採点後に管理されます</footer>
+  </div>
+
+  <!-- 拡大プレビューモーダル -->
+  <div id="previewModal">
+    <img id="previewImg" src="" alt="">
+    <button id="previewClose">✕</button>
+  </div>
+
+  <script>
+    // ── 設定 ────────────────────────────────────────────
+    // config.js から読み込み
+    const QUIZ_API_URL = CONFIG?.GAS_URL || 'https://script.google.com/macros/s/AKfycbyXmHKNXTf9J1grc6DVzxYyn_dRvTp2rco-tVenlyvXV5NnMjwBCqM4gztH2E3Xv56ReA/exec';
+    const SUBMISSION_API_URL = CONFIG?.SUBMISSION_GAS_URL || 'https://script.google.com/macros/s/AKfycbzjdWowASKBLt4GMArG6QQ20IiHb76dz_y16VvalMUgp9snDojlcxXyX0-_50Gcj-_0/exec';
+    const YEAR    = CONFIG?.YEAR || '2026';
+
+    // ── マーカー検出パラメータ（自由に調整可能） ──────
+    const MARKER_DETECT_PARAMS = {
+      MARKER_SIZE_RATIO: 0.048,    // マーカーサイズ推定率（画像幅の何%か）
+      MARGIN_RATIO: 0.5,           // 周囲領域マージン（ウィンドウの何倍か）
+      MIN_CONTRAST: 15,            // 最小対比度（周囲と中央の輝度差の閾値）← 緩くした
+      DARK_THRESH: 140,            // 重心計算時の暗画素輝度閾値（これより暗い=重心に含める）
+      EXCLUDE_MARGIN_RATIO: 0,     // 画像周囲除外率 ← 0 に（除外なし）
+    };
+
+    // ── URLパラメータ取得 ──────────────────────────────
+    const params = new URLSearchParams(location.search);
+    let studentClass  = params.get('class') || '';
+    let number        = params.get('num')   || '';
+    const round       = params.get('round') || '?';
+    const isParamFixed = !!(studentClass && number);  // URL パラメータから両方取得済みフラグ
+    let   yearClasses = [];
+
+    document.getElementById('roundLabel').textContent = round !== '?' ? `第${round}回` : '';
+    document.title = `第${round}回物理レポート提出`;
+    document.querySelector('h1').firstChild.textContent = `第${round}回物理レポート提出`;
+
+    // ── 提出期間チェック（クライアント側） ──────────────────
+    // サーバー側でも確認されるが、UX向上のためクライアント側でも確認
+    const checkActivePeriod = () => {
+      fetch(`${QUIZ_API_URL}?action=getActivePeriod&class=`, {
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+      })
+        .then(r => r.text())
+        .then(text => JSON.parse(text))
+        .then(data => {
+          // data.active, data.next を確認
+          const isRoundActive = data.active || (data.next && Number(data.next.round) === Number(round));
+
+          if (round !== '?' && !isRoundActive && !data.active) {
+            // 期間外の場合、提出フォームを無効化してメッセージ表示
+            const container = document.querySelector('.wrap');
+            container.innerHTML = `
+              <div class="card" style="background: #fff3cd; border-color: #ffc107; color: #856404;">
+                <p style="font-size: 18px; margin: 20px 0;">申し訳ありません</p>
+                <p>第${round}回の提出期間は終了しています。</p>
+                <p style="font-size: 14px; color: #666; margin-top: 16px;">
+                  提出期間外でのアップロードはできません。<br>
+                  詳しくは担当教員にお問い合わせください。
+                </p>
+              </div>
+            `;
+            return; // 以降の処理をスキップ
+          }
+        })
+        .catch(() => {
+          // API 失敗時も処理は続行（サーバー側で確認される）
+        });
+    };
+    checkActivePeriod();
+
+    // ── URLパラメータを即座にセレクトへ反映 ──────────────
+    // GASのロード完了を待たずにクイズページから引き継いだ値を表示する
+    if (studentClass) {
+      const selC = document.getElementById('selClass');
+      const opt  = document.createElement('option');
+      opt.value = studentClass; opt.textContent = studentClass; opt.selected = true;
+      selC.appendChild(opt);
+      selC.disabled = true;  // URL パラメータからの値は変更不可
+    }
+    if (studentClass && number) {
+      const selN = document.getElementById('selNum');
+      const opt  = document.createElement('option');
+      opt.value = number; opt.textContent = number; opt.selected = true;
+      selN.appendChild(opt);
+      selN.disabled = true;  // URL パラメータからの値は変更不可
+    }
+
+    // ── クラス設定読み込み（config.js から直接取得）────────
+    try {
+      const yearConfigMap = CONFIG?.YEAR_CONFIG || {};
+      const classes = yearConfigMap[YEAR] || [];
+      if (classes && classes.length > 0) {
+        yearClasses = classes;
+        const sel = document.getElementById('selClass');
+        sel.innerHTML = '<option value="">-- 選択 --</option>';
+        classes.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.class;
+          opt.textContent = c.class;
+          if (c.class === studentClass) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        if (studentClass) rebuildNumSelectSub(studentClass, number);
+        updateSubmitButton();
+      }
+    } catch (err) {
+      console.warn('クラス設定の読み込みに失敗しました:', err.message);
+    }
+
+    function rebuildNumSelectSub(cls, preselect) {
+      const found  = yearClasses.find(c => c.class === cls);
+      const numSel = document.getElementById('selNum');
+      numSel.innerHTML = '<option value="">-- 選択 --</option>';
+      if (!found) { numSel.disabled = true; return; }
+      numSel.disabled = false;
+      for (let i = 1; i <= found.max; i++) {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = String(i);
+        if (preselect && Number(preselect) === i) opt.selected = true;
+        numSel.appendChild(opt);
+      }
+    }
+
+    document.getElementById('selClass').addEventListener('change', () => {
+      // URL パラメータから固定された場合は変更禁止
+      if (isParamFixed) return;
+      studentClass = document.getElementById('selClass').value;
+      number = '';
+      rebuildNumSelectSub(studentClass, '');
+      updateSubmitButton();
+    });
+    document.getElementById('selNum').addEventListener('change', () => {
+      // URL パラメータから固定された場合は変更禁止
+      if (isParamFixed) return;
+      number = document.getElementById('selNum').value;
+      updateSubmitButton();
+    });
+
+    // URLパラメータ反映後の初回ボタン状態更新
+    // (updateSubmitButton は files が空のため即座には有効にならないが状態を初期化)
+    // ※ filesが揃ったタイミングで再チェックされる
+
+    const isMobile = navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent);
+    document.querySelector('.upload-text').textContent = isMobile ? 'タップして写真を選択' : 'ファイルを選択';
+
+    // ── 状態 ────────────────────────────────────────────
+    // status: 'processing' | 'ok' | 'error' | 'pdf'
+    let files = [];
+    let expectedPages = null; // 管理画面で設定したレポート枚数
+    let dragSrcIdx = null;
+
+    // ── 期待枚数を取得 ──────────────────────────────────
+    fetch(`${QUIZ_API_URL}?action=getActivePeriod&class=${encodeURIComponent(studentClass || '')}`)
+      .then(r => r.json())
+      .then(d => { if (d.active && d.active.pageCount) { expectedPages = d.active.pageCount; updatePageCountInfo(); } })
+      .catch(() => {});
+
+    // ── マーカー検出・透視変換 定数 ─────────────────────
+    const A4_W_MM = 210, A4_H_MM = 297;
+    const MRK_C   = 10;  // マーカー中心 = margin(5mm) + size/2(5mm)
+    const OUT_W   = 1654, OUT_H = Math.round(OUT_W * A4_H_MM / A4_W_MM); // 2339px (A4 @ 200dpi)
+
+    // 出力画像における各マーカー中心座標 [TL, TR, BL, BR]
+    const DST_PTS = [
+      { x: MRK_C / A4_W_MM * OUT_W,               y: MRK_C / A4_H_MM * OUT_H },
+      { x: (A4_W_MM - MRK_C) / A4_W_MM * OUT_W,   y: MRK_C / A4_H_MM * OUT_H },
+      { x: MRK_C / A4_W_MM * OUT_W,               y: (A4_H_MM - MRK_C) / A4_H_MM * OUT_H },
+      { x: (A4_W_MM - MRK_C) / A4_W_MM * OUT_W,   y: (A4_H_MM - MRK_C) / A4_H_MM * OUT_H }
+    ];
+
+    // ── OMR座標定義（A4 200dpi = 1654×2339px基準） ────────
+    // test.pdfのマークシート実測値。ズレがあれば各数値を調整。
+    // 単位: px（OUT_W=1654, OUT_H=2339 のwarp後画像）
+    // 配置: クラスバブル(E/J) + 十の位0-9 + 一の位0-9
+    const OMR = {
+      // ── マークシートページ識別マーカー（上辺中央・下辺中央の■）──
+      // warp後画像(1654×2339px)での中心座標。どちらか1つが検出されればマークシートと判定。
+      idMarkers: [
+        { x: 829, y:   65, rx: 30, ry: 30 },  // 上辺中央
+        { x: 829, y: 2280, rx: 25, ry: 25 },  // 下辺中央
+      ],
+      // ── バブル座標（クラスバブル + 十の位 + 一の位）──
+      // クラスバブル中心（yearClassesの順番=バブルの左→右順）
+      classBubbles: [
+        { x: 172, y: 225, rx: 9, ry: 12 },  // 1クラス目（E）
+        { x: 222, y: 225, rx: 9, ry: 12 },  // 2クラス目（J）
+        { x: 270, y: 225, rx: 9, ry: 12 },  // 3クラス目（未使用時は無視）
+      ],
+      // 十の位バブル行
+      tens:  { y: 225, x0: 428, dx: 45.8, rx: 9, ry: 12 },  // x0=「0」の中心、dx=桁間隔
+      // 一の位バブル行
+      units: { y: 283, x0: 428, dx: 45.8, rx: 9, ry: 12 },
+      filledThresh: 0.40,   // 塗り済み判定（暗画素率）
+    };
+
+    // ── ユーティリティ ──────────────────────────────────
+    function formatSize(bytes) {
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function today() {
+      const d = new Date();
+      return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function showStatus(type, msg) {
+      const el = document.getElementById('status');
+      el.className = `status visible ${type}`;
+      el.innerHTML = type === 'loading'
+        ? `<span class="spinner"></span>${msg}`
+        : msg;
+    }
+    function hideStatus() {
+      document.getElementById('status').className = 'status';
+    }
+
+    function setStep(n) {
+      for (let i = 1; i <= 2; i++) {
+        const el = document.getElementById(`step${i}`);
+        el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+      }
+    }
+
+    // ── 画像→Canvas変換（EXIF方向補正込み、maxPxでスケール制限） ──
+    function loadCanvas(file, maxPx) {
+      return new Promise((res, rej) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+          const w = Math.round(img.naturalWidth * scale);
+          const h = Math.round(img.naturalHeight * scale);
+          const cvs = document.createElement('canvas');
+          cvs.width = w; cvs.height = h;
+          cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+          res(cvs);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('画像を読み込めませんでした')); };
+        img.src = url;
+      });
+    }
+
+    // ── HEIC→JPEG変換（ネイティブ優先、Chrome等は libheif-js で対応） ──
+    // libheif-bundle.js はファクトリ関数。await libheif() でモジュールを取得する。
+    let _libheifModulePromise = null;
+    async function ensureLibheif() {
+      if (_libheifModulePromise) return _libheifModulePromise;
+      _libheifModulePromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/libheif-js@1.19.8/libheif-wasm/libheif-bundle.js';
+        s.onerror = () => reject(new Error('HEICデコーダの読み込みに失敗しました。ネットワークを確認してください。'));
+        s.onload = () => {
+          // libheif はファクトリ関数。呼び出すと Promise<module> が返る。
+          Promise.resolve(libheif()).then(resolve).catch(reject);
+        };
+        document.head.appendChild(s);
+      });
+      return _libheifModulePromise;
+    }
+
+    async function convertHeicBlob(blob) {
+      // Safari on iOS/macOS はHEICをネイティブデコードできる（高速・全形式対応）
+      const url = URL.createObjectURL(blob);
+      const nativeOk = await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(true); };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(false); };
+        img.src = url;
+      });
+      if (nativeOk) return blob;
+
+      // Chrome等はlibheif-jsでデコード（遅延ロード）
+      const lib = await ensureLibheif();
+      const buffer = await blob.arrayBuffer();
+      const decoder = new lib.HeifDecoder();
+      const images = decoder.decode(new Uint8Array(buffer));
+      if (!images || images.length === 0) {
+        throw new Error('HEICファイルをデコードできませんでした。');
+      }
+      const image = images[0];
+      const w = image.get_width();
+      const h = image.get_height();
+      const cvs = document.createElement('canvas');
+      cvs.width = w; cvs.height = h;
+      const ctx = cvs.getContext('2d');
+      const imgData = ctx.createImageData(w, h);
+      await new Promise((resolve, reject) => {
+        image.display(imgData, (displayData) => {
+          if (!displayData) { reject(new Error('HEICのデコードに失敗しました。')); return; }
+          resolve();
+        });
+      });
+      ctx.putImageData(imgData, 0, 0);
+      return await new Promise(r => cvs.toBlob(r, 'image/jpeg', 0.92));
+    }
+
+    // ── マーカー検出＋透視変換 ───────────────────────────
+    async function processImageFile(entry) {
+      const isHeic = /\.(heic|heif)$/i.test(entry.file.name)
+                  || entry.file.type === 'image/heic'
+                  || entry.file.type === 'image/heif';
+      const imageFile = isHeic
+        ? await convertHeicBlob(entry.file)
+        : entry.file;
+
+      // 高解像度canvas（透視変換に使用）
+      const hiCvs = await loadCanvas(imageFile, 2800);
+      const hiW = hiCvs.width, hiH = hiCvs.height;
+
+      // 低解像度canvas（マーカー検出に使用：高速化）
+      const detScale = Math.min(1, 2000 / Math.max(hiW, hiH));  // 最大2000pxに拡大（より詳細に表示）
+      const detW = Math.round(hiW * detScale), detH = Math.round(hiH * detScale);
+      const detCvs = document.createElement('canvas');
+      detCvs.width = detW; detCvs.height = detH;
+      detCvs.getContext('2d', { willReadFrequently: true }).drawImage(hiCvs, 0, 0, detW, detH);
+
+      const imgData = detCvs.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, detW, detH);
+      const DETECTION_RANGE_RATIO = 0.50;  // 各隅から中央方向にどこまで探すか（0.50 = 左上1/4）
+      const rw = Math.round(detW * DETECTION_RANGE_RATIO), rh = Math.round(detH * DETECTION_RANGE_RATIO);
+
+      // 背景を避けるため、周囲を除外（MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO で制御）
+      const excludeMargin = Math.round(detW * MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO);
+
+      // 四隅マーカー検出（低解像度座標）
+      const ptsLow = [
+        findMarker(imgData, detW, detH, excludeMargin, excludeMargin, rw - excludeMargin, rh - excludeMargin),
+        findMarker(imgData, detW, detH, detW - rw + excludeMargin, excludeMargin, rw - excludeMargin, rh - excludeMargin),
+        findMarker(imgData, detW, detH, excludeMargin, detH - rh + excludeMargin, rw - excludeMargin, rh - excludeMargin),
+        findMarker(imgData, detW, detH, detW - rw + excludeMargin, detH - rh + excludeMargin, rw - excludeMargin, rh - excludeMargin),
+      ];
+
+      if (ptsLow.some(p => p === null)) {
+        throw new Error('四隅の■マーカーを検出できませんでした。\nレポート全体が写るよう撮り直してください。');
+      }
+
+      // ── デバッグ：修正前の低解像度画像に検出位置を描画 ──
+      const debugCtx = detCvs.getContext('2d');
+      debugCtx.strokeStyle = '#ff0000';
+      debugCtx.lineWidth = 3;
+      debugCtx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+      ptsLow.forEach(pt => {
+        const size = 20;
+        debugCtx.strokeRect(pt.x - size, pt.y - size, size * 2, size * 2);
+        debugCtx.fillRect(pt.x - size, pt.y - size, size * 2, size * 2);
+      });
+      console.log('【デバッグ】検出位置（低解像度）', ptsLow);
+      console.log('修正前画像:', detCvs.toDataURL());
+
+      // 傾き・歪みチェック（限界を超えたら再撮影を促す）
+      const tiltCheck = checkMarkerTilt(ptsLow);
+      if (!tiltCheck.ok) {
+        throw new Error(`傾きが大きすぎます（最大 ${tiltCheck.deg}°）。\nレポートをできるだけ真上から、水平に撮り直してください。`);
+      }
+
+      // 低解像度座標 → 高解像度座標にスケール変換
+      const srcPts = ptsLow.map(p => ({ x: p.x / detScale, y: p.y / detScale }));
+      console.log('【デバッグ】検出位置（高解像度スケール後）', srcPts);
+
+      // 四隅マーカー座標を保存（プレビュー表示用）
+      entry.cornerMarkers = srcPts;
+
+      const outCvs = await warpPerspective(hiCvs, srcPts, DST_PTS, OUT_W, OUT_H);
+      enhanceDocument(outCvs);
+      entry.omrResult = readOMR(outCvs, yearClasses.map(c => c.class));
+
+      // ── マーカーを描画（傾き補正検証用）※今後必要になるかもしれないのでコメントアウト ──
+      
+      const ctx = outCvs.getContext('2d');
+
+      // 四隅マーカーを赤で描画（補正後の固定位置）
+      ctx.strokeStyle = '#ff0000';
+      ctx.lineWidth = 6;
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+      DST_PTS.forEach(pt => {
+        const size = 35;
+        ctx.strokeRect(pt.x - size, pt.y - size, size * 2, size * 2);
+        ctx.fillRect(pt.x - size, pt.y - size, size * 2, size * 2);
+      });
+
+      // 上下中央マーカーを常に緑で描画（マークシート判定用）
+      ctx.strokeStyle = '#00cc00';
+      ctx.lineWidth = 6;
+      ctx.fillStyle = 'rgba(0, 204, 0, 0.1)';
+      OMR.idMarkers.forEach(m => {
+        ctx.strokeRect(m.x - m.rx, m.y - m.ry, m.rx * 2, m.ry * 2);
+        ctx.fillRect(m.x - m.rx, m.y - m.ry, m.rx * 2, m.ry * 2);
+      });
+      
+
+      entry.dataUrl       = outCvs.toDataURL('image/jpeg', 0.92);
+      entry.correctedBlob = await new Promise(r => outCvs.toBlob(r, 'image/jpeg', 0.92));
+      // マークシートページ判定：上下中央マーカーが検出されたページを1ページ目として認識
+      entry.markerPageIndex = (entry.omrResult && entry.omrResult.isMarksheet) ? 0 : -1;
+      entry.status        = 'ok';
+    }
+
+    // 積分画像スライディングウィンドウでマーカー中心を検出（見つからなければ null）
+    // ── 傾き限界チェック ──────────────────────────────────
+    // pts: [TL, TR, BL, BR]（低解像度座標）
+    // 上辺・下辺の水平からの傾き、左辺・右辺の垂直からの傾きを計算し
+    // MAX_DEG を超えたら再撮影を要求する
+    const TILT_MAX_DEG = 25;
+    function checkMarkerTilt(pts) {
+      const [tl, tr, bl, br] = pts;
+      const toDeg = rad => rad * 180 / Math.PI;
+
+      const topTilt    = Math.abs(toDeg(Math.atan2(tr.y - tl.y, tr.x - tl.x)));
+      const bottomTilt = Math.abs(toDeg(Math.atan2(br.y - bl.y, br.x - bl.x)));
+      const leftTilt   = Math.abs(90 - Math.abs(toDeg(Math.atan2(bl.y - tl.y, bl.x - tl.x))));
+      const rightTilt  = Math.abs(90 - Math.abs(toDeg(Math.atan2(br.y - tr.y, br.x - tr.x))));
+
+      const maxTilt = Math.max(topTilt, bottomTilt, leftTilt, rightTilt);
+      return maxTilt <= TILT_MAX_DEG
+        ? { ok: true }
+        : { ok: false, deg: Math.round(maxTilt) };
+    }
+
+    // ── OMR読み取り ────────────────────────────────────
+    // canvas: warp済み (OUT_W×OUT_H)、classNames: ['2E','2J',...]
+    // ── OMR読み取り設定 ────────────────────────────────
+    const DARK_THRESH = 32;  // 輝度の暗さ判定閾値（下げると厳しく、上げると甘くなる）
+
+    // 戻り値: { isMarksheet, detectedClass, detectedNum }
+    function readOMR(canvas, classNames) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const w = canvas.width, h = canvas.height;
+      const id = ctx.getImageData(0, 0, w, h);
+      const data = id.data;
+
+      // 指定長方形領域の暗画素率（0〜1）を返す
+      function sampleDark(cx, cy, rx, ry) {
+        let dark = 0, total = 0;
+        for (let dy = -ry; dy <= ry; dy++) {
+          for (let dx = -rx; dx <= rx; dx++) {
+            const px = Math.round(cx + dx), py = Math.round(cy + dy);
+            if (px < 0 || py < 0 || px >= w || py >= h) continue;
+            const i = (py * w + px) * 4;
+            if (data[i]*0.299 + data[i+1]*0.587 + data[i+2]*0.114 < DARK_THRESH) dark++;
+            total++;
+          }
+        }
+        return total > 0 ? dark / total : 0;
+      }
+
+      // ── Step1: 識別マーカーでマークシートページかどうかを判定 ──
+      const idRates = OMR.idMarkers.map(m => ({ ...m, rate: sampleDark(m.x, m.y, m.rx, m.ry) }));
+      console.log('[OMR] idMarkers:', idRates.map(m => `(${m.x},${m.y}) rate=${(m.rate*100).toFixed(1)}%`).join(' / '), `threshold=${OMR.filledThresh*100}%`);
+      const isMarksheet = idRates.some(m => m.rate >= OMR.filledThresh);
+      if (!isMarksheet) {
+        console.log('[OMR] → not a marksheet page');
+        // drawOMRDebug(ctx, idRates, [], [], []);  // DEBUG OFF
+        return { isMarksheet: false, detectedClass: null, detectedNum: null };
+      }
+
+      // ── Step2: バブルを読む ──
+      const classRates = OMR.classBubbles
+        .map(b => ({ cx: b.x, cy: b.y, rx: b.rx, ry: b.ry, rate: sampleDark(b.x, b.y, b.rx, b.ry) }));
+      const classIdx   = classRates.indexOf(classRates.reduce((a, b) => a.rate > b.rate ? a : b));
+      const classMarked = classRates[classIdx].rate >= OMR.filledThresh;
+      console.log('[OMR] class:', classRates.map((c,i) => `${classNames[i]||i}=${(c.rate*100).toFixed(1)}%`).join(' '));
+
+      function readRow(row, label) {
+        const cells = [];
+        for (let d = 0; d <= 9; d++) cells.push({ cx: row.x0 + d * row.dx, cy: row.y, rx: row.rx, ry: row.ry, rate: sampleDark(row.x0 + d * row.dx, row.y, row.rx, row.ry) });
+        const max = Math.max(...cells.map(c => c.rate));
+        const idx = cells.findIndex(c => c.rate === max);
+        console.log(`[OMR] ${label}:`, cells.map((c,i) => `${i}=${(c.rate*100).toFixed(1)}%`).join(' '), `→ best=${idx}(${(max*100).toFixed(1)}%)`);
+        return { idx, marked: max >= OMR.filledThresh, cells };
+      }
+
+      const tens  = readRow(OMR.tens,  'tens');
+      const units = readRow(OMR.units, 'units');
+
+      // drawOMRDebug(ctx, idRates, classRates, tens.cells, units.cells);  // DEBUG OFF
+
+      // 番号計算
+      const detectedClass = classMarked ? (classNames[classIdx] || null) : null;
+      let detectedNum = null;
+      if (tens.marked && units.marked) {
+        detectedNum = String(tens.idx * 10 + units.idx).padStart(2, '0');
+      } else if (units.marked) {
+        detectedNum = String(units.idx).padStart(2, '0');
+      }
+      console.log(`[OMR] result: class=${detectedClass} num=${detectedNum}`);
+
+      return { isMarksheet: true, detectedClass, detectedNum, idMarkers: idRates };
+    }
+
+    // サンプル点を補正済み画像に描画（緑=閾値以上、赤=閾値未満）
+    function drawOMRDebug(ctx, idMarkers, classRates, tensCells, unitsCells) {
+      function drawRect(cx, cy, rx, ry, rate) {
+        ctx.strokeStyle = rate >= OMR.filledThresh ? '#00cc00' : '#ff0000';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(cx - rx, cy - ry, rx * 2, ry * 2);
+      }
+      idMarkers.forEach(m => drawRect(m.x, m.y, m.rx, m.ry, m.rate));
+      classRates.forEach(c => drawRect(c.cx, c.cy, c.rx, c.ry, c.rate));
+      tensCells.forEach(c  => drawRect(c.cx, c.cy, c.rx, c.ry, c.rate));
+      unitsCells.forEach(c => drawRect(c.cx, c.cy, c.rx, c.ry, c.rate));
+    }
+
+    function findMarker(imgData, imgW, imgH, rx, ry, rw, rh) {
+      const d = imgData.data;
+      const { MARKER_SIZE_RATIO, MARGIN_RATIO, MIN_CONTRAST, DARK_THRESH } = MARKER_DETECT_PARAMS;
+
+      // マーカーサイズ推定
+      const winW = Math.max(8, Math.round(imgW * MARKER_SIZE_RATIO));
+      const winH = Math.max(8, Math.round(imgH * MARKER_SIZE_RATIO));
+
+      // コーナー領域の輝度値を抽出（ローカル対比度ベース検出用）
+      const gray = new Uint8Array(rw * rh);
+      for (let y = 0; y < rh; y++) {
+        for (let x = 0; x < rw; x++) {
+          const i = ((ry + y) * imgW + (rx + x)) * 4;
+          gray[y * rw + x] = Math.round(d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114);
+        }
+      }
+
+      // 輝度値の積分画像を構築（各ウィンドウの平均輝度計算用）
+      const W1 = rw + 1;
+      const integ = new Int32Array((rh + 1) * W1);
+      for (let y = 1; y <= rh; y++) {
+        for (let x = 1; x <= rw; x++) {
+          integ[y * W1 + x] = gray[(y-1) * rw + (x-1)]
+            + integ[(y-1) * W1 + x]
+            + integ[y * W1 + (x-1)]
+            - integ[(y-1) * W1 + (x-1)];
+        }
+      }
+
+      // ウィンドウをスライドして最も対比度が高い領域を探す
+      const stepX = Math.max(1, Math.round(winW / 3));
+      const stepY = Math.max(1, Math.round(winH / 3));
+      const margin = Math.max(4, Math.round(winW * MARGIN_RATIO));  // 周囲領域のマージン
+      let bestContrast = 0, bestX = 0, bestY = 0;
+
+      for (let y = 0; y + winH <= rh; y += stepY) {
+        for (let x = 0; x + winW <= rw; x += stepX) {
+          // ウィンドウ内の輝度合計
+          const centerSum = integ[(y+winH) * W1 + (x+winW)]
+                          - integ[y        * W1 + (x+winW)]
+                          - integ[(y+winH) * W1 + x]
+                          + integ[y        * W1 + x];
+
+          // 周囲領域の輝度合計（ウィンドウを margin だけ拡張）
+          const x0 = Math.max(0, x - margin);
+          const y0 = Math.max(0, y - margin);
+          const x1 = Math.min(rw, x + winW + margin);
+          const y1 = Math.min(rh, y + winH + margin);
+
+          const outerSum = integ[y1 * W1 + x1]
+                         - integ[y0 * W1 + x1]
+                         - integ[y1 * W1 + x0]
+                         + integ[y0 * W1 + x0];
+
+          // 周囲（外枠）の輝度合計 = 全体 - 中央
+          const surroundSum = outerSum - centerSum;
+          const surroundPixels = (x1 - x0) * (y1 - y0) - (winW * winH);
+
+          if (surroundPixels <= 0) continue;
+
+          // 対比度スコア = (周囲の平均輝度) - (中央の平均輝度)
+          const surroundAvg = surroundSum / surroundPixels;
+          const centerAvg = centerSum / (winW * winH);
+          const contrast = surroundAvg - centerAvg;
+
+          if (contrast > bestContrast) {
+            bestContrast = contrast;
+            bestX = x;
+            bestY = y;
+          }
+        }
+      }
+
+      // 対比度チェック：十分な対比があることを確認
+      if (bestContrast < MIN_CONTRAST) return null;
+
+      // 最暗ウィンドウ内の暗いピクセルの重心で精密化
+      let sx = 0, sy = 0, cnt = 0;
+      const x1 = Math.min(bestX + winW, rw), y1 = Math.min(bestY + winH, rh);
+      for (let y = bestY; y < y1; y++) {
+        for (let x = bestX; x < x1; x++) {
+          if (gray[y * rw + x] < DARK_THRESH) {
+            sx += rx + x;
+            sy += ry + y;
+            cnt++;
+          }
+        }
+      }
+
+      if (cnt === 0) return null;
+      return { x: sx / cnt, y: sy / cnt };
+    }
+
+    // ── 画像補正（白点正規化 + 選択的カラー保持） ────────
+    function enhanceDocument(canvas) {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const w = canvas.width, h = canvas.height;
+      const id = ctx.getImageData(0, 0, w, h);
+      const d = id.data;
+      const n = w * h;
+
+      // ① チャンネル別ヒストグラムで白点推定（4px飛ばしで高速化）
+      const hR = new Int32Array(256), hG = new Int32Array(256), hB = new Int32Array(256);
+      for (let i = 0; i < n; i += 4) {
+        const o = i * 4;
+        hR[d[o]]++; hG[d[o+1]]++; hB[d[o+2]]++;
+      }
+      const samples = Math.ceil(n / 4);
+      function pct95(h) {
+        let s = 0, tgt = samples * 0.95;
+        for (let v = 0; v <= 255; v++) { s += h[v]; if (s >= tgt) return Math.max(v, 1); }
+        return 255;
+      }
+      const wpR = pct95(hR), wpG = pct95(hG), wpB = pct95(hB);
+
+      // ② 白点正規化 + 選択的カラー保持（彩度閾値 0.28）
+      const SAT_THRESH = 0.28;
+      for (let i = 0; i < n; i++) {
+        const o = i * 4;
+        const r = Math.min(255, d[o]   * 255 / wpR);
+        const g = Math.min(255, d[o+1] * 255 / wpG);
+        const b = Math.min(255, d[o+2] * 255 / wpB);
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        // 暗すぎる画素（インク）は彩度判定をスキップしてそのままグレー化
+        const sat = mx > 10 ? (mx - mn) / mx : 0;
+        if (sat > SAT_THRESH) {
+          d[o] = r; d[o+1] = g; d[o+2] = b;  // カラー保持
+        } else {
+          const gray = r * 0.299 + g * 0.587 + b * 0.114;
+          d[o] = d[o+1] = d[o+2] = gray;      // グレースケール化
+        }
+      }
+      ctx.putImageData(id, 0, 0);
+    }
+
+    // 逆写像で透視変換を適用
+    async function warpPerspective(srcCvs, srcPts, dstPts, dstW, dstH) {
+      await new Promise(r => setTimeout(r, 0)); // UI スレッドに制御を返す
+      const H = computeHomography(dstPts, srcPts); // dst → src の逆写像
+
+      const outCvs = document.createElement('canvas');
+      outCvs.width = dstW; outCvs.height = dstH;
+      const sd     = srcCvs.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, srcCvs.width, srcCvs.height).data;
+      const outCtx = outCvs.getContext('2d', { willReadFrequently: true });
+      const od     = outCtx.createImageData(dstW, dstH);
+      const sw = srcCvs.width, sh = srcCvs.height;
+
+      for (let y = 0; y < dstH; y++) {
+        for (let x = 0; x < dstW; x++) {
+          const w_ = H[6]*x + H[7]*y + 1;
+          const sx = Math.round((H[0]*x + H[1]*y + H[2]) / w_);
+          const sy = Math.round((H[3]*x + H[4]*y + H[5]) / w_);
+          const oi = (y * dstW + x) * 4;
+          if (sx >= 0 && sx < sw && sy >= 0 && sy < sh) {
+            const si = (sy * sw + sx) * 4;
+            od.data[oi]   = sd[si];
+            od.data[oi+1] = sd[si+1];
+            od.data[oi+2] = sd[si+2];
+            od.data[oi+3] = 255;
+          } else {
+            od.data[oi] = od.data[oi+1] = od.data[oi+2] = 255;
+            od.data[oi+3] = 255;
+          }
+        }
+      }
+      outCtx.putImageData(od, 0, 0);
+      return outCvs;
+    }
+
+    // 4点対応からホモグラフィー行列（h[0..7]）を求める
+    function computeHomography(src, dst) {
+      const A = [], b = [];
+      for (let i = 0; i < 4; i++) {
+        const {x: x1, y: y1} = src[i], {x: x2, y: y2} = dst[i];
+        A.push([x1, y1, 1, 0, 0, 0, -x2*x1, -x2*y1]); b.push(x2);
+        A.push([0, 0, 0, x1, y1, 1, -y2*x1, -y2*y1]); b.push(y2);
+      }
+      return solveLinear(A, b);
+    }
+
+    // ガウス消去法で 8×8 線形方程式を解く
+    function solveLinear(A, b) {
+      const n = 8;
+      const M = A.map((r, i) => [...r, b[i]]);
+      for (let c = 0; c < n; c++) {
+        let p = c;
+        for (let r = c+1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+        [M[c], M[p]] = [M[p], M[c]];
+        for (let r = 0; r < n; r++) {
+          if (r === c || M[r][c] === 0) continue;
+          const f = M[r][c] / M[c][c];
+          for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j];
+        }
+      }
+      return M.map((r, i) => r[n] / r[i]);
+    }
+
+    // ── 拡大プレビュー ───────────────────────────────────
+    const modal     = document.getElementById('previewModal');
+    const previewImg = document.getElementById('previewImg');
+
+    document.addEventListener('click', e => {
+      const thumb = e.target.closest('.previewable');
+      if (thumb) {
+        previewImg.src = thumb.dataset.src;
+        modal.classList.add('open');
+        return;
+      }
+      if (e.target === modal || e.target.id === 'previewClose') {
+        modal.classList.remove('open');
+        previewImg.src = '';
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { modal.classList.remove('open'); previewImg.src = ''; }
+    });
+
+    // ── ハッシュ計算（重複検出用） ───────────────────────
+    async function computeHash(file) {
+      const buf = await file.arrayBuffer();
+      const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+// ── ファイル追加 ────────────────────────────────────
+    // ── マークシートページを先頭に移動（OMR認識は提出後に実施） ──
+    function autoHandleOMR() {
+      // マークシートページの数をカウント
+      const msCount = files.filter(e => e.omrResult && e.omrResult.isMarksheet).length;
+      const msIdx = files.findIndex(e => e.omrResult && e.omrResult.isMarksheet);
+
+      console.log('[autoHandleOMR]', {
+        msCount,
+        msIdx,
+        filesLength: files.length,
+        expectedPages,
+        fileStatuses: files.map(f => f.status)
+      });
+
+      // 複数検出の場合、即座にエラー（ファイル枚数関係なく判定可能）
+      if (msCount > 1) {
+        console.log('[autoHandleOMR] → 複数マークシート検出');
+        showStatus('error', 'マークシートを含んだページが複数枚検出されました。やり直してください。');
+        files.forEach(e => e.status = 'error');
+        return;
+      }
+
+      // ファイルが全部揃ったか確認（期待枚数と同じ数で、全て処理完了）
+      const isComplete = expectedPages && files.length === expectedPages && files.every(e => e.status !== 'processing');
+      console.log('[autoHandleOMR] isComplete =', isComplete);
+
+      // ファイルが全部揃った場合のみ「マークシートなし」を判定
+      if (isComplete && msIdx < 0) {
+        console.log('[autoHandleOMR] → マークシートなし（ファイル揃った後）');
+        showStatus('error', 'マークシートが見つかりません。マークシート用紙をご使用ください。');
+        files.forEach(e => e.status = 'error');
+        return;
+      }
+
+      // エラー状態をクリア（正常な場合）
+      files.forEach(e => {
+        if (e.status === 'error') e.status = 'ok';
+      });
+      hideStatus();
+
+      // 先頭でなければ移動
+      if (msIdx !== 0 && msIdx >= 0) {
+        console.log('[autoHandleOMR] → マークシート先頭に移動');
+        const ms = files.splice(msIdx, 1)[0];
+        files.unshift(ms);
+      }
+    }
+
+    function addFiles(newFiles) {
+      Array.from(newFiles).forEach(async file => {
+        if (file.size > 20 * 1024 * 1024) {
+          showStatus('error', `${file.name}：ファイルサイズが大きすぎます（20MB以下）`);
+          return;
+        }
+
+        const hash = await computeHash(file);
+        if (files.some(e => e.hash === hash)) {
+          showStatus('error', `${file.name}：すでに選択済みの画像と同じファイルです`);
+          return;
+        }
+        const entry = { file, hash, dataUrl: null, correctedBlob: null,
+                        page: files.length + 1, status: 'processing', errorMsg: '' };
+        files.push(entry);
+        renderImageList();
+
+        processImageFile(entry)
+          .then(() => { autoHandleOMR(); renderImageList(); updateSubmitButton(); })
+          .catch(err => {
+            entry.status   = 'error';
+            entry.errorMsg = err.message;
+            renderImageList(); updateSubmitButton();
+          });
+      });
+    }
+
+    function renderImageList() {
+      const list = document.getElementById('imageList');
+      list.innerHTML = '';
+      files.forEach((entry, i) => {
+        const item = document.createElement('div');
+        item.className = 'image-item'
+          + (entry.status === 'error'      ? ' error'      : '')
+          + (entry.status === 'processing' ? ' processing' : '');
+        item.draggable = entry.status !== 'processing';
+        item.dataset.idx = i;
+
+        let thumbHtml;
+        if (entry.status === 'processing') {
+          thumbHtml = `<div class="image-thumb" style="display:flex;align-items:center;justify-content:center;"><span class="spinner" style="width:20px;height:20px;margin:0;"></span></div>`;
+        } else if (entry.status === 'error') {
+          thumbHtml = `<div class="image-thumb" style="display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--error);">✕</div>`;
+        } else {
+          thumbHtml = `<img class="image-thumb previewable" src="${entry.dataUrl}" data-src="${entry.dataUrl}" alt="">`;
+        }
+
+        let pageLabel;
+        if      (entry.status === 'processing') pageLabel = '検出中...';
+        else if (entry.status === 'ok')         pageLabel = files.length > 1 ? `${i+1}枚目（補正済み）` : '補正済み';
+        else                                    pageLabel = '';
+
+        // OMRバッジ
+        let omrBadge = '';
+        if (entry.omrResult && entry.omrResult.isMarksheet) {
+          omrBadge = `<div class="omr-badge">✓ マークシート</div>`;
+        }
+
+        const dragHandle = entry.status !== 'processing'
+          ? `<span class="drag-handle" title="ドラッグで並び替え">⠿</span>`
+          : '';
+
+        item.innerHTML = `
+          ${dragHandle}
+          ${thumbHtml}
+          <div class="image-meta">
+            <div class="image-name">${entry.file.name}</div>
+            <div class="image-size">${formatSize(entry.file.size)}</div>
+            ${entry.status === 'error'
+              ? `<div class="image-page" style="color:var(--error);white-space:pre-line;font-size:11px;">${entry.errorMsg}</div>`
+              : `<div class="image-page">${pageLabel}</div>`}
+            ${omrBadge}
+          </div>
+          ${entry.status !== 'processing'
+            ? `<button class="btn-remove" data-idx="${i}" title="削除">✕</button>` : ''}
+        `;
+
+        // ドラッグイベント
+        item.addEventListener('dragstart', e => {
+          dragSrcIdx = i;
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => item.style.opacity = '0.4', 0);
+        });
+        item.addEventListener('dragend', () => {
+          item.style.opacity = '';
+          list.querySelectorAll('.image-item').forEach(el => el.classList.remove('drag-over'));
+        });
+        item.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          list.querySelectorAll('.image-item').forEach(el => el.classList.remove('drag-over'));
+          item.classList.add('drag-over');
+        });
+        item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+        item.addEventListener('drop', e => {
+          e.preventDefault();
+          item.classList.remove('drag-over');
+          if (dragSrcIdx === null || dragSrcIdx === i) return;
+          const moved = files.splice(dragSrcIdx, 1)[0];
+          files.splice(i, 0, moved);
+          dragSrcIdx = null;
+          renderImageList(); autoHandleOMR(); updateSubmitButton();
+        });
+
+        list.appendChild(item);
+      });
+
+      files.forEach((f, i) => f.page = i + 1);
+
+      const hasFiles = files.length > 0;
+      const hasError = files.some(e => e.status === 'error');
+      document.getElementById('addMoreBtn').style.display = hasFiles ? 'block' : 'none';
+      if (hasFiles && !hasError) hideStatus();
+
+      list.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          files.splice(Number(btn.dataset.idx), 1);
+          renderImageList(); autoHandleOMR(); updateSubmitButton();
+        });
+      });
+    }
+
+    function updateSubmitButton() {
+      const hasFiles   = files.length > 0;
+      const allReady   = files.every(e => e.status === 'ok');
+      const countOk    = resolveCountOk();
+      const studentOk  = !!studentClass && !!number;
+      const canSubmit  = hasFiles && allReady && countOk && studentOk;
+      document.getElementById('submitBtn').disabled = !canSubmit;
+      document.getElementById('submitHint').style.display = canSubmit ? 'block' : 'none';
+      updatePageCountInfo();
+    }
+
+    // 枚数チェック結果を返す（trueなら提出可）
+    function resolveCountOk() {
+      if (expectedPages === null) return true;
+      return files.length === expectedPages;
+    }
+
+    function updatePageCountInfo() {
+      const el = document.getElementById('pageCountInfo');
+      if (!expectedPages || files.length === 0) { el.style.display = 'none'; return; }
+      const allReady = files.every(e => e.status === 'ok');
+      if (!allReady) { el.style.display = 'none'; return; }
+
+      const count = files.length;
+      el.style.display = 'block';
+      if (count === expectedPages) {
+        el.style.cssText = 'display:block; font-size:13px; padding:10px 14px; border-radius:8px; margin-top:10px; background:var(--success-light); color:var(--success); border:1px solid #a8d8bc;';
+        el.textContent = `${expectedPages}枚 揃っています ✓`;
+      } else {
+        el.style.cssText = 'display:block; font-size:13px; padding:10px 14px; border-radius:8px; margin-top:10px; background:var(--error-light); color:var(--error); border:1px solid #e8b4b4;';
+        el.textContent = `${count}枚 / 期待枚数 ${expectedPages}枚（枚数が合いません）`;
+      }
+    }
+
+    // ── イベント ────────────────────────────────────────
+    document.getElementById('fileInput').addEventListener('change', e => {
+      addFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    document.getElementById('addMoreInput').addEventListener('change', e => {
+      addFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    const uploadZone = document.getElementById('uploadZone');
+    uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+
+    // ── 提出ボタン ───────────────────────────────────────
+    document.getElementById('submitBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      showStatus('loading', 'PDFを作成中...');
+
+      try {
+        const { blob, mimeType } = await buildPDF();
+
+        showStatus('loading', 'アップロード中... しばらくお待ちください');
+
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload  = e => resolve(e.target.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        // マーカーページを検出（最初のマーカーページのインデックスを使用）
+        const markerEntry = files.find(e => e.omrResult && e.omrResult.isMarksheet);
+        const markerPageIndex = markerEntry ? files.indexOf(markerEntry) : -1;
+
+        const payload = {
+          year: YEAR,
+          round,
+          studentClass,
+          number: String(number).padStart(2, '0'),
+          date:   today(),
+          markerPageIndex,
+          files:  [{ base64, mimeType, page: 1 }]
+        };
+
+        const res  = await fetch(SUBMISSION_API_URL, { method: 'POST', body: JSON.stringify(payload) });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || '保存に失敗しました');
+
+        document.getElementById('panel-upload').style.display = 'none';
+        const donePanel = document.getElementById('panel-done');
+        donePanel.style.display = 'block';
+        donePanel.classList.add('visible');
+        setStep(2);
+        hideStatus();
+
+        const fileList = document.getElementById('doneFileList');
+        json.saved.forEach(f => {
+          const li = document.createElement('li');
+          li.textContent = f.name;
+          fileList.appendChild(li);
+        });
+
+      } catch (err) {
+        showStatus('error', `エラーが発生しました：${err.message}`);
+        btn.disabled = false;
+      }
+    });
+
+// ── PDF生成（補正済み画像を1つのPDFに統合） ────────
+    async function buildPDF() {
+      // 補正済み画像をjsPDFで1つのPDFに統合
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      files.forEach((entry, i) => {
+        if (i > 0) doc.addPage();
+        doc.addImage(entry.dataUrl, 'JPEG', 0, 0, 210, 297);
+      });
+      return { blob: doc.output('blob'), mimeType: 'application/pdf' };
+    }
+
+  </script>
+</body>
+</html>

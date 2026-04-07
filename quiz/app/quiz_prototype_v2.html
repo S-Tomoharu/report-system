@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レポート提出前の確認てすとに挑戦！</title>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] },
+    startup: { typeset: false }
+  };
+
+  // MathJax 遅延読み込み（ページ高速化）
+  window.mathjaxLoaded = new Promise(resolve => {
+    window.addEventListener('load', () => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js';
+      script.onload = () => {
+        MathJax.startup.promise.then(resolve);
+      };
+      document.head.appendChild(script);
+    });
+  });
+</script>
+<!-- 設定ファイルの読み込み -->
+<script src="../../config.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #f5f6fa;
+    --white: #ffffff;
+    --border: #e4e7f0;
+    --accent: #4a7cff;
+    --accent-light: #eef2ff;
+    --success: #22c47a;
+    --muted: #9099b2;
+    --text: #1a1f36;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 48px;
+  }
+
+  .wrap { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── 共通カード ── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    animation: pop 0.28s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.97) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* ── イントロ ── */
+  .intro {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .intro-icon { font-size: 26px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+  .intro-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+  .intro-sub { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  /* ── ローディング ── */
+  .loading {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .loading-spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── クラス番号入力 ── */
+  .login-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 28px;
+  }
+  .login-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+  .login-fields { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+  .field-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 6px; }
+  .field-row { display: flex; gap: 10px; }
+  .field-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.15s;
+  }
+  .field-input:focus { outline: none; border-color: var(--accent); }
+  .field-input.error { border-color: #f7536a; }
+
+  /* ── ドット ── */
+  .dots-row { display: flex; gap: 8px; justify-content: center; padding: 2px 0; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, transform 0.2s;
+  }
+  .dot.answered { background: #c5cfe8; transform: scale(1.15); }
+
+  /* ── 問題カード ── */
+  .q-step { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: 1px; margin-bottom: 10px; }
+  .q-text { font-size: 15px; font-weight: 700; line-height: 1.8; margin-bottom: 20px; }
+
+  /* ── 4択 ── */
+  .choices { display: flex; flex-direction: column; gap: 10px; }
+  .choice {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 13px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    background: var(--white);
+    transition: border-color 0.15s, background 0.15s;
+    user-select: none;
+    line-height: 1.6;
+  }
+  .choice:hover:not(.disabled) { border-color: var(--accent); background: var(--accent-light); }
+  .choice.selected { border-color: var(--accent); background: var(--accent-light); }
+  .choice.disabled { cursor: default; pointer-events: none; }
+  .choice-radio {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--border); flex-shrink: 0;
+    margin-top: 2px;
+    transition: border-color 0.15s, background 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .choice.selected .choice-radio { border-color: var(--accent); background: var(--accent); }
+  .choice.selected .choice-radio::after {
+    content: ''; width: 6px; height: 6px; border-radius: 50%; background: #fff;
+  }
+  .choice-label { font-size: 13px; color: var(--muted); font-weight: 700; margin-right: 4px; flex-shrink: 0; margin-top: 1px; }
+  .choice-text { font-size: 14px; line-height: 1.7; }
+
+  /* ── 記述式 ── */
+  .text-input-wrap { margin-top: 4px; }
+  .text-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 15px;
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color 0.15s;
+  }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+  .text-input-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ── ボタン ── */
+  .btn-wrap { margin-top: 20px; display: flex; justify-content: flex-end; }
+  .btn {
+    padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif; font-size: 14px; font-weight: 700;
+    background: var(--accent); color: #fff;
+    transition: opacity 0.15s, transform 0.15s; display: none;
+  }
+  .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn.visible { display: block; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-primary {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: var(--accent); color: #fff;
+    font-family: 'Noto Sans JP', sans-serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s, transform 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  /* ── 結果カード ── */
+  .result-card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 40px 28px; text-align: center;
+    display: none;
+    animation: pop 0.3s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  .result-card.visible { display: block; }
+  .result-icon { font-size: 48px; margin-bottom: 14px; }
+  .result-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .result-msg { font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.8; }
+
+  .btn-submit {
+    display: inline-block; padding: 13px 36px; border-radius: 10px; border: none;
+    background: var(--success); color: #fff;
+    font-family: 'Noto Sans JP', sans-serif; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s, transform 0.15s;
+  }
+  .btn-submit:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  .btn-retry-link {
+    display: inline-block; margin-top: 16px; font-size: 13px; color: var(--muted);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+    background: none; border: none; font-family: inherit;
+  }
+  .btn-retry-link:hover { color: var(--accent); }
+
+  .notify-note {
+    font-size: 12px; color: #c0a060; background: #fffbf0;
+    border: 1px solid #f0e0b0; border-radius: 8px;
+    padding: 10px 14px; display: none; text-align: center;
+  }
+  .notify-note.visible { display: block; }
+
+  .error-msg { font-size: 12px; color: #f7536a; margin-top: 6px; display: none; }
+  .error-msg.visible { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ローディング -->
+  <div id="loadingBlock" class="loading">
+    <div class="loading-spinner"></div>
+    読み込んでいます…
+  </div>
+
+  <!-- 提出期間外 -->
+  <div class="result-card" id="closedScreen">
+    <div class="result-icon">🗓️</div>
+    <div class="result-title">提出期間外です</div>
+    <div class="result-msg" id="closedMsg"></div>
+    <button class="btn-retry-link" id="btnBackToPortal">← クラス・番号を選び直す</button>
+  </div>
+
+  <!-- クラス番号入力 -->
+  <div id="loginBlock" style="display:none;">
+    <div class="login-card">
+      <div class="login-title">📝 レポート提出前の確認テストに挑戦！</div>
+      <div class="login-sub">クラスと出席番号を選択してください。</div>
+      <div class="login-fields">
+        <div>
+          <div class="field-label">クラス</div>
+          <select class="field-input" id="inputClass">
+            <option value="">-- クラスを選択 --</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">出席番号</div>
+          <select class="field-input" id="inputNum" disabled>
+            <option value="">-- 番号を選択 --</option>
+          </select>
+        </div>
+      </div>
+      <div class="error-msg" id="loginError">クラスと出席番号を選択してください</div>
+      <button class="btn-primary" id="btnLogin">始める →</button>
+    </div>
+  </div>
+
+  <!-- イントロ（テスト中に表示） -->
+  <div class="intro" id="introBlock" style="display:none;">
+    <div class="intro-icon">📝</div>
+    <div>
+      <div class="intro-title">レポート提出前の確認テスト</div>
+      <div class="intro-sub" id="introSub">授業内容の振り返りをしよう。</div>
+    </div>
+  </div>
+
+  <!-- ドット -->
+  <div class="dots-row" id="dotsRow" style="display:none;"></div>
+
+  <!-- 問題カード -->
+  <div class="card" id="quizCard" style="display:none;">
+    <div class="q-step" id="qStep"></div>
+    <div class="q-text" id="qText"></div>
+    <!-- 4択 -->
+    <div class="choices" id="choices"></div>
+    <!-- 記述式 -->
+    <div class="text-input-wrap" id="textInputWrap" style="display:none;">
+      <input class="text-input" type="text" id="textAnswer" placeholder="答えを入力してください">
+      <div class="text-input-hint">※ 全角・半角どちらでも入力できます</div>
+    </div>
+    <div class="btn-wrap">
+      <button class="btn" id="btnNext">決定 →</button>
+      <button class="btn" id="btnDone">決定 →</button>
+    </div>
+  </div>
+
+  <!-- 合格 -->
+  <div class="result-card" id="passScreen">
+    <div class="result-icon">👍</div>
+    <div class="result-title">OK！</div>
+    <div class="result-msg" id="passMsg">レポートの提出を認めます。レポート提出画面へどうぞ。</div>
+    <button class="btn-submit" id="btnGoSubmit">レポートを提出する →</button>
+  </div>
+
+  <!-- 不合格 -->
+  <div class="result-card" id="retryScreen">
+    <div class="result-icon">🤔</div>
+    <div class="result-title">もう一度見てみよう</div>
+    <div class="result-msg">授業の内容をもう一度確認して、<br>再度試してみてください。</div>
+    <button class="btn-retry-link" id="btnRetry">もう一度やってみる</button>
+  </div>
+
+  <div class="notify-note" id="notifyNote">※ 間違えた回数が多いため、担当教員に状況をお知らせしました</div>
+
+</div>
+<script>
+// ── 設定 ──────────────────────────────────────────────
+// config.local.js から読み込み（設定が存在しない場合のフォールバック）
+const GAS_URL = CONFIG?.GAS_URL || 'https://script.google.com/macros/s/AKfycbzeUD2g1tgdA6osACYUuccpuPxDDs5wzgvNlkBfZCExfqGnGfv1ZWVQyVY6s-eX0Ohg/exec';
+const SHEET = CONFIG?.SHEET || '2026年度';
+const YEAR  = '2026';           // 年度（クラス設定取得に使用）
+const TERM  = CONFIG?.TERM || null;
+const QUIZ_COUNT = CONFIG?.QUIZ_COUNT || 3;
+let   ROUND = null;             // getActivePeriod() で動的にセット
+// SUBMISSION_URL: GitHub Pages 対応 + ローカル開発対応
+const SUBMISSION_URL = CONFIG?.GITHUB_PAGES_URL
+  ? (CONFIG.GITHUB_PAGES_URL + '/submission/submission.html')
+  : '../../submission/submission.html';  // ローカル開発時は相対パス
+const FAIL_NOTIFY_THRESHOLD = CONFIG?.FAIL_NOTIFY_THRESHOLD || 3;
+
+// ── 状態 ──────────────────────────────────────────────
+let QUESTION_POOL = [];
+let pool = [], currentIdx = 0, results = [];
+let selectedChoice = null, textInput = '', answered = false;
+let totalFails = 0, notified = false;
+let studentId = '', studentClass = '', studentNumber = '';
+let yearClasses = [];
+
+// ── MathJax 再レンダリング（クイズ追加時に呼び出す） ─────
+// 回避策2：DOM 追加後に MathJax を再実行
+function reRenderMathJax() {
+  if (window.MathJax && window.MathJax.typesetPromise) {
+    MathJax.typesetPromise().catch(err => console.log('MathJax error:', err));
+  }
+}
+
+// ── 正規化（記述式の比較用） ──────────────────────────
+function normalize(str) {
+  return str
+    .trim()
+    .normalize('NFKC')          // 全角→半角
+    .toLowerCase()
+    .replace(/\s+/g, '');       // スペース除去
+}
+
+// ── 日時フォーマット ───────────────────────────────────
+function fmtDate(isoStr) {
+  const d = new Date(isoStr);
+  return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+// ── 起動：クラス設定を読んでポータルを表示 ──────────────
+async function init() {
+  try {
+    await loadClassConfig();
+  } catch (err) { /* クラス設定が取れなくてもポータルは表示する */ }
+  document.getElementById('loadingBlock').style.display = 'none';
+  document.getElementById('loginBlock').style.display = '';
+}
+
+// ── クラス選択後の期間チェック → クイズ開始 ────────────
+async function checkPeriodAndStart(cls) {
+  // loadingBlock をリセットして表示
+  document.getElementById('loadingBlock').innerHTML =
+    '<div class="loading-spinner"></div>読み込んでいます…';
+  document.getElementById('loadingBlock').style.display = '';
+
+  try {
+    // 並列実行：getActivePeriod と getQuestions を同時に呼び出し（3s ではなく max(2s, 3s) = 3s）
+    const [periodRes, questionsRes] = await Promise.all([
+      fetch(`${GAS_URL}?action=getActivePeriod&class=${encodeURIComponent(cls)}`),
+      fetch(`${GAS_URL}?action=getQuestions&sheet=${encodeURIComponent(SHEET)}${TERM ? `&term=${encodeURIComponent(TERM)}` : ''}&mode=quiz`)
+    ]);
+
+    const data = await periodRes.json();
+    const questionsData = await questionsRes.json();
+
+    if (data.error) throw new Error(data.error);
+    if (questionsData.error) throw new Error(questionsData.error);
+
+    if (!data.active) {
+      // 期間外
+      let msg = `${cls}のレポート提出期間は現在受け付けていません。`;
+      if (data.next) {
+        msg += `\n\n第${data.next.round}回の受け付け予定：\n${fmtDate(data.next.start)} 〜 ${fmtDate(data.next.end)}`;
+        if (data.next.memo) msg += `\n（${data.next.memo}）`;
+      } else {
+        msg += '\n\n次の提出期間はまだ設定されていません。';
+      }
+      document.getElementById('loadingBlock').style.display = 'none';
+      document.getElementById('closedMsg').style.whiteSpace = 'pre-line';
+      document.getElementById('closedMsg').textContent = msg;
+      document.getElementById('closedScreen').classList.add('visible');
+      return;
+    }
+
+    // 有効期間内
+    ROUND = String(data.active.round);
+    document.title = `提出前の確認テスト（第${ROUND}回）`;
+    document.querySelector('.intro-title').textContent = `提出前の確認テスト（第${ROUND}回）`;
+    document.getElementById('passMsg').textContent = `第${ROUND}回レポートの提出を認めます。提出画面へどうぞ。`;
+
+    // 問題を処理（並列実行で取得済みの questionsData を使用）
+    if (!questionsData.questions || questionsData.questions.length === 0) throw new Error('問題が見つかりませんでした');
+
+    QUESTION_POOL = questionsData.questions.map(q => {
+      if (q.type === '記述') {
+        return { q: q.q, type: '記述', choices: [], ans: q.ans };
+      }
+      const orig        = [q.a, q.b, q.c, q.d];
+      const correctText = orig[['A','B','C','D'].indexOf(q.ans)];
+      const shuffled    = shuffle([...orig]);
+      return {
+        q:       q.q,
+        type:    q.type || '4択',
+        choices: shuffled,
+        ans:     shuffled.indexOf(correctText)
+      };
+    });
+
+    document.getElementById('loadingBlock').style.display = 'none';
+    document.getElementById('introSub').textContent = '授業内容を振り返ってからレポートを提出しましょう。';
+    startRound();
+
+  } catch (err) {
+    document.getElementById('loadingBlock').innerHTML =
+      `<div style="color:#f7536a;font-size:14px;">⚠ 読み込みに失敗しました<br><small>${err.message}</small></div>`;
+  }
+}
+
+// ── GASから問題取得 ────────────────────────────────────
+async function loadQuestions() {
+  try {
+    const termParam = TERM ? `&term=${encodeURIComponent(TERM)}` : '';
+    const url = `${GAS_URL}?action=getQuestions&sheet=${encodeURIComponent(SHEET)}${termParam}&mode=quiz`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+    if (!data.questions || data.questions.length === 0) throw new Error('問題が見つかりませんでした');
+
+    // GASのデータをアプリの形式に変換
+    QUESTION_POOL = data.questions.map(q => {
+      if (q.type === '記述') {
+        return { q: q.q, type: '記述', choices: [], ans: q.ans };
+      }
+      const orig        = [q.a, q.b, q.c, q.d];
+      const correctText = orig[['A','B','C','D'].indexOf(q.ans)];
+      const shuffled    = shuffle([...orig]);
+      return {
+        q:       q.q,
+        type:    q.type || '4択',
+        choices: shuffled,
+        ans:     shuffled.indexOf(correctText)
+      };
+    });
+
+  } catch (err) {
+    document.getElementById('loadingBlock').innerHTML =
+      `<div style="color:#f7536a;font-size:14px;">⚠ 問題の読み込みに失敗しました<br><small>${err.message}</small></div>`;
+    throw err;
+  }
+}
+
+// ── クラス設定取得 ─────────────────────────────────────
+async function loadClassConfig() {
+  try {
+    // config.js から直接取得
+    const yearConfigMap = CONFIG?.YEAR_CONFIG || {};
+    const classes = yearConfigMap[YEAR] || [];
+
+    if (!classes || classes.length === 0) return;
+
+    yearClasses = classes;
+    const sel = document.getElementById('inputClass');
+    sel.innerHTML = '<option value="">-- クラスを選択 --</option>';
+    classes.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.class;
+      opt.textContent = c.class;
+      sel.appendChild(opt);
+    });
+
+    sel.addEventListener('change', () => rebuildNumSelect());
+  } catch (err) {
+    // クラス設定が取得できなくてもテストは続行できる（テキスト入力にフォールバック）
+    console.warn('クラス設定の読み込みに失敗しました:', err.message);
+  }
+  // ローディング非表示、ログイン表示（loadQuestionsと並列実行なのでここで表示）
+}
+
+function rebuildNumSelect(preselect) {
+  const cls    = document.getElementById('inputClass').value;
+  const numSel = document.getElementById('inputNum');
+  numSel.innerHTML = '<option value="">-- 番号を選択 --</option>';
+  const found = yearClasses.find(c => c.class === cls);
+  if (!found) { numSel.disabled = true; return; }
+  numSel.disabled = false;
+  for (let i = 1; i <= found.max; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = String(i);
+    if (preselect && Number(preselect) === i) opt.selected = true;
+    numSel.appendChild(opt);
+  }
+}
+
+// ── ログイン（ポータル → 期間チェック） ───────────────
+document.getElementById('btnLogin').addEventListener('click', () => {
+  const cls = document.getElementById('inputClass').value;
+  const num = document.getElementById('inputNum').value;
+  const errEl = document.getElementById('loginError');
+
+  if (!cls || !num) {
+    errEl.classList.add('visible');
+    return;
+  }
+  errEl.classList.remove('visible');
+  studentClass = cls;
+  studentNumber = num;
+  studentId = `${cls}-${num}`;
+
+  document.getElementById('loginBlock').style.display = 'none';
+  checkPeriodAndStart(cls);
+});
+
+// ── 提出期間外画面から戻る ────────────────────────────
+document.getElementById('btnBackToPortal').addEventListener('click', () => {
+  document.getElementById('closedScreen').classList.remove('visible');
+  document.getElementById('loginBlock').style.display = '';
+});
+
+// ── シャッフル ────────────────────────────────────────
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ── ラウンド開始 ──────────────────────────────────────
+function startRound() {
+  pool = shuffle(QUESTION_POOL).slice(0, QUIZ_COUNT);
+  currentIdx = 0; results = [];
+  document.getElementById('notifyNote').classList.remove('visible');
+  selectedChoice = null; textInput = ''; answered = false;
+
+  document.getElementById('retryScreen').classList.remove('visible');
+  document.getElementById('passScreen').classList.remove('visible');
+  document.getElementById('quizCard').style.display = '';
+  document.getElementById('dotsRow').style.display = '';
+  document.getElementById('introBlock').style.display = '';
+
+  buildDots();
+  renderQuestion();
+}
+
+// ── ドット ────────────────────────────────────────────
+function buildDots() {
+  const row = document.getElementById('dotsRow');
+  row.innerHTML = '';
+  for (let i = 0; i < QUIZ_COUNT; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.id = 'dot' + i;
+    row.appendChild(d);
+  }
+}
+
+// ── 問題描画 ──────────────────────────────────────────
+function renderQuestion() {
+  const q = pool[currentIdx];
+  document.getElementById('qStep').textContent = `${currentIdx + 1} / ${QUIZ_COUNT}`;
+
+  // 問題文
+  const qTextEl = document.getElementById('qText');
+  qTextEl.innerHTML = q.q;
+
+  const choicesEl = document.getElementById('choices');
+  const textWrap  = document.getElementById('textInputWrap');
+  const textEl    = document.getElementById('textAnswer');
+
+  document.getElementById('btnNext').classList.remove('visible');
+  document.getElementById('btnDone').classList.remove('visible');
+  selectedChoice = null; textInput = ''; answered = false;
+
+  if (q.type === '記述') {
+    // 記述式
+    choicesEl.style.display = 'none';
+    textWrap.style.display = '';
+    textEl.value = '';
+    textEl.focus();
+    textEl.oninput = () => {
+      textInput = textEl.value;
+      if (!answered && textInput.trim()) {
+        answered = true;
+        document.getElementById('dot' + currentIdx).className = 'dot answered';
+        if (currentIdx < QUIZ_COUNT - 1)
+          document.getElementById('btnNext').classList.add('visible');
+        else
+          document.getElementById('btnDone').classList.add('visible');
+      }
+    };
+  } else {
+    // 4択
+    choicesEl.style.display = '';
+    textWrap.style.display = 'none';
+    choicesEl.innerHTML = '';
+    const labels = ['A', 'B', 'C', 'D'];
+    q.choices.forEach((c, i) => {
+      const div = document.createElement('div');
+      div.className = 'choice';
+      div.innerHTML = `
+        <span class="choice-radio"></span>
+        <span class="choice-label">${labels[i]}.</span>
+        <span class="choice-text">${c}</span>`;
+      div.addEventListener('click', () => selectChoice(i));
+      choicesEl.appendChild(div);
+    });
+  }
+
+  // MathJax
+  const targets = [qTextEl, choicesEl, textWrap];
+  function doTypeset() {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      MathJax.typesetClear(targets);
+      MathJax.typesetPromise(targets);
+    } else {
+      setTimeout(doTypeset, 300);
+    }
+  }
+  doTypeset();
+
+  const card = document.getElementById('quizCard');
+  card.style.animation = 'none';
+  requestAnimationFrame(() => { card.style.animation = ''; });
+}
+
+// ── 選択肢クリック ────────────────────────────────────
+function selectChoice(idx) {
+  document.querySelectorAll('.choice').forEach(d => d.classList.remove('selected'));
+  document.querySelectorAll('.choice')[idx].classList.add('selected');
+  selectedChoice = idx;
+
+  if (!answered) {
+    answered = true;
+    document.getElementById('dot' + currentIdx).className = 'dot answered';
+    if (currentIdx < QUIZ_COUNT - 1)
+      document.getElementById('btnNext').classList.add('visible');
+    else
+      document.getElementById('btnDone').classList.add('visible');
+  }
+}
+
+// ── 回答確定 ──────────────────────────────────────────
+function confirmAnswer() {
+  const q = pool[currentIdx];
+  let correct;
+  if (q.type === '記述') {
+    correct = normalize(textInput) === normalize(String(q.ans));
+  } else {
+    correct = selectedChoice === q.ans;
+  }
+  results.push(correct);
+  document.querySelectorAll('.choice').forEach(d => d.classList.add('disabled'));
+  document.getElementById('textAnswer').disabled = true;
+}
+
+// ── ナビゲーション ────────────────────────────────────
+document.getElementById('btnNext').addEventListener('click', () => {
+  confirmAnswer(); currentIdx++; renderQuestion();
+});
+
+document.getElementById('btnDone').addEventListener('click', () => {
+  confirmAnswer();
+  document.getElementById('quizCard').style.display = 'none';
+  document.getElementById('dotsRow').style.display = 'none';
+  document.getElementById('introBlock').style.display = 'none';
+
+  if (results.every(r => r)) {
+    document.getElementById('passScreen').classList.add('visible');
+  } else {
+    totalFails++;
+    if (totalFails >= FAIL_NOTIFY_THRESHOLD) {
+      document.getElementById('notifyNote').classList.add('visible');
+      fetch(`${GAS_URL}?action=logAlert&round=${encodeURIComponent(ROUND)}&class=${encodeURIComponent(studentClass)}&num=${encodeURIComponent(studentNumber)}`).catch(() => {});
+    }
+    document.getElementById('retryScreen').classList.add('visible');
+  }
+});
+
+document.getElementById('btnRetry').addEventListener('click', startRound);
+
+document.getElementById('btnGoSubmit').addEventListener('click', () => {
+  const url = new URL(SUBMISSION_URL, location.href);
+  url.searchParams.set('class', studentClass);
+  url.searchParams.set('num',   studentNumber);
+  url.searchParams.set('round', ROUND);
+  location.href = url.toString();
+});
+
+// ── 起動 ──────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# 設定ファイル（ローカル開発用、実値を含む）
+config.js
+config.local.js
+# config.js は管理画面から自動生成され、Dropbox に配置
+
+# テスト用ファイル
+test.pdf
+test_ver*.pdf
+*.HEIC
+文書名*.pdf
+文書名*.jpg
+IMG_*.HEIC
+.claude/
+
+# 実験用フォルダ（個人情報を含む）
+_redact_test/original/
+_redact_test/redacted/
+_redact_test/results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / npm（将来的な使用に備えて）
+node_modules/
+npm-debug.log
+
+# その他のエディタ設定
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
