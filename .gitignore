@@ -1,8 +1,19 @@
-# 設定ファイル（ローカル開発用、実値を含む）
+# 開発用ファイル（ローカルで管理）
+*.gs
+*.md
 config.js
 config.local.js
+config.template.js
+quiz/gas/
+quiz/tools/
+submission_backup_*/
+submission/claude_ocr.gs
+submission/gemini_ocr.gs
+submission/gemini_ocr_test.html
+submission/check_tool.html
+submission/unified_evaluator.html
 
-# メディアファイル（生徒データを含むため）
+# メディアファイル
 *.pdf
 *.HEIC
 *.heic
@@ -10,18 +21,14 @@ config.local.js
 *.jpeg
 *.png
 
-# テスト・実験用フォルダ（個人情報を含むため）
+# テスト・実験用フォルダ
 _redact_test/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Node / npm（将来的な使用に備えて）
-node_modules/
-npm-debug.log
-
-# その他のエディタ設定
+# エディタ設定
 .vscode/
 .idea/
 *.swp
