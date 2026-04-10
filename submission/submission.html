@@ -184,6 +184,42 @@
     .upload-text { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
     .upload-sub { font-size: 12px; color: var(--text-sub); }
 
+    /* ── カメラボタン ── */
+    .camera-btn {
+      width: 100%;
+      padding: 12px 16px;
+      margin-top: 12px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .camera-btn:hover, .camera-btn:active { border-color: var(--accent); background: var(--accent-light); }
+    .camera-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── カメラアクションボタン ── */
+    .camera-action-btn {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--accent);
+      color: white;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .camera-action-btn:hover { opacity: 0.88; }
+    .camera-action-btn.secondary {
+      background: var(--text-sub);
+      color: white;
+    }
+
     /* ── 画像リスト ── */
     .image-list {
       display: flex;
@@ -481,6 +517,20 @@
           <p class="upload-text">タップして写真を選択</p>
           <p class="upload-sub">JPG・PNG 対応 / 複数枚まとめて選択可</p>
         </div>
+        <button type="button" id="cameraBtn" class="camera-btn">📷 カメラで撮影</button>
+
+        <!-- カメラエリア（初期非表示） -->
+        <div id="cameraArea" style="display:none; margin-top:12px;">
+          <div id="cameraContainer" style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000;">
+            <video id="cameraVideo" autoplay playsinline style="width:100%; display:block;"></video>
+            <div id="cameraGuide" style="position:absolute; inset:0; pointer-events:none; border:3px dashed rgba(255,255,255,0.6); margin:8%; border-radius:4px;"></div>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button type="button" id="captureBtn" class="camera-action-btn">📸 撮影する</button>
+            <button type="button" id="cameraCloseBtn" class="camera-action-btn secondary">閉じる</button>
+          </div>
+        </div>
+
         <div class="image-list" id="imageList"></div>
         <button class="add-more-btn" id="addMoreBtn" style="display:none;">
           <input type="file" id="addMoreInput" accept="image/*" multiple>
@@ -1481,6 +1531,58 @@
       });
       return { blob: doc.output('blob'), mimeType: 'application/pdf' };
     }
+
+    // ── カメラ機能 ────────────────────────────────────────
+    const cameraVideo = document.getElementById('cameraVideo');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const cameraArea = document.getElementById('cameraArea');
+    const captureBtn = document.getElementById('captureBtn');
+    const cameraCloseBtn = document.getElementById('cameraCloseBtn');
+
+    function stopCamera() {
+      const stream = cameraVideo.srcObject;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      cameraVideo.srcObject = null;
+      cameraArea.style.display = 'none';
+    }
+
+    cameraBtn.addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        cameraVideo.srcObject = stream;
+        cameraArea.style.display = 'block';
+        cameraBtn.disabled = true;
+      } catch (err) {
+        showStatus('error', 'カメラを起動できませんでした');
+        console.error(err);
+      }
+    });
+
+    captureBtn.addEventListener('click', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = cameraVideo.videoWidth;
+      canvas.height = cameraVideo.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0);
+      canvas.toBlob(blob => {
+        blob.name = `camera_${Date.now()}.jpg`;
+        addFiles([blob]);
+        stopCamera();
+        cameraBtn.disabled = false;
+      }, 'image/jpeg', 0.95);
+    });
+
+    cameraCloseBtn.addEventListener('click', () => {
+      stopCamera();
+      cameraBtn.disabled = false;
+    });
+
+    // ページ離脱時にカメラを停止
+    window.addEventListener('beforeunload', stopCamera);
 
   </script>
 </body>
