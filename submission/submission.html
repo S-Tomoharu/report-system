@@ -534,11 +534,11 @@
             <div id="cameraGuide" style="position:absolute; inset:0; pointer-events:none;">
               <!-- A4比率枠（縦向き） -->
               <div style="position:absolute; inset:8%; border:3px dashed rgba(255,255,255,0.6); border-radius:4px; aspect-ratio:210/297;"></div>
-              <!-- 四隅マーカー -->
-              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:8%; left:8%; transform:translate(-50%,-50%);"></div>
-              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:8%; right:8%; transform:translate(50%,-50%);"></div>
-              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:8%; left:8%; transform:translate(-50%,50%);"></div>
-              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:8%; right:8%; transform:translate(50%,50%);"></div>
+              <!-- 四隅マーカー（A4枠の内側） -->
+              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:11%; left:11%; transform:translate(-50%,-50%);"></div>
+              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:11%; right:11%; transform:translate(50%,-50%);"></div>
+              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:11%; left:11%; transform:translate(-50%,50%);"></div>
+              <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:11%; right:11%; transform:translate(50%,50%);"></div>
             </div>
           </div>
           <div style="display:flex; gap:8px; margin-top:8px;">
@@ -910,8 +910,6 @@
         debugCtx.fillRect(pt.x - size, pt.y - size, size * 2, size * 2);
       });
       console.log('【デバッグ】検出位置（低解像度）', ptsLow);
-      console.log('【デバッグ】検出位置（高解像度スケール後）', srcPts);
-      console.log('修正前画像:', detCvs.toDataURL());
 
       // 傾き・歪みチェック（限界を超えたら再撮影を促す）
       const tiltCheck = checkMarkerTilt(ptsLow);
