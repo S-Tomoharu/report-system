@@ -1569,7 +1569,7 @@
     cameraBtn.addEventListener('click', async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+          video: { facingMode: 'environment', width: { ideal: 4000 }, height: { ideal: 6000 } }
         });
         cameraVideo.srcObject = stream;
         cameraArea.style.display = 'block';
