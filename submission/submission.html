@@ -574,13 +574,18 @@
     const SUBMISSION_API_URL = CONFIG?.SUBMISSION_GAS_URL || 'https://script.google.com/macros/s/AKfycbzjdWowASKBLt4GMArG6QQ20IiHb76dz_y16VvalMUgp9snDojlcxXyX0-_50Gcj-_0/exec';
     const YEAR    = CONFIG?.YEAR || '2026';
 
+    // ── 状態（スクリプト全体で使用） ────────────────────────────────
+    let files = [];
+    let expectedPages = null; // 管理画面で設定したレポート枚数
+    let dragSrcIdx = null;
+    let yearClasses = [];
+
     // ── URLパラメータ取得 ──────────────────────────────
     const params = new URLSearchParams(location.search);
     let studentClass  = params.get('class') || '';
     let number        = params.get('num')   || '';
     const round       = params.get('round') || '?';
     const isParamFixed = !!(studentClass && number);  // URL パラメータから両方取得済みフラグ
-    let   yearClasses = [];
 
     document.getElementById('roundLabel').textContent = round !== '?' ? `第${round}回` : '';
     document.title = `第${round}回物理レポート提出`;
@@ -695,12 +700,6 @@
 
     const isMobile = navigator.maxTouchPoints > 0 || /Mobi|Android/i.test(navigator.userAgent);
     document.querySelector('.upload-text').textContent = isMobile ? 'タップして写真を選択' : 'ファイルを選択';
-
-    // ── 状態 ────────────────────────────────────────────
-    // status: 'processing' | 'ok' | 'error' | 'pdf'
-    let files = [];
-    let expectedPages = null; // 管理画面で設定したレポート枚数
-    let dragSrcIdx = null;
 
     // ── 期待枚数を取得 ──────────────────────────────────
     fetch(`${QUIZ_API_URL}?action=getActivePeriod&class=${encodeURIComponent(studentClass || '')}`)
