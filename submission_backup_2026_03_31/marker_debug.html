@@ -966,7 +966,9 @@
           }
         }
 
-        infoHTML += `低解像度: ${detW} × ${detH}px (scale: ${detScale.toFixed(3)})`;
+        infoHTML += `<br><strong>画像解像度:</strong><br>`;
+        infoHTML += `&nbsp;&nbsp;高: ${hiCvs.width} × ${hiCvs.height}px<br>`;
+        infoHTML += `&nbsp;&nbsp;低: ${detW} × ${detH}px (scale: ${detScale.toFixed(3)})`;
         document.getElementById('beforeInfo').innerHTML = infoHTML;
 
       } catch (err) {
