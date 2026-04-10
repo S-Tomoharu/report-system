@@ -533,7 +533,7 @@
             <!-- A4ガイド枠と四隅マーカー -->
             <div id="cameraGuide" style="position:absolute; inset:0; pointer-events:none;">
               <!-- A4比率枠（縦向き）をコンテナとして、マーカーをその内側に配置 -->
-              <div style="position:absolute; inset:8%; border:3px dashed rgba(255,255,255,0.6); border-radius:4px; aspect-ratio:210/297; display:flex;">
+              <div id="a4Frame" style="position:absolute; inset:8%; border:3px dashed rgba(255,255,255,0.6); border-radius:4px; aspect-ratio:210/297; display:flex;">
                 <!-- マーカー：A4枠の内側、角から5mmの位置（マーカー左上が5mm） -->
                 <!-- 左上 -->
                 <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; left:2%;"></div>
@@ -1574,6 +1574,19 @@
         cameraVideo.srcObject = stream;
         cameraArea.style.display = 'block';
         cameraBtn.disabled = true;
+
+        // ビデオストリームのメタデータ読み込み後、実際のアスペクト比を取得
+        cameraVideo.onloadedmetadata = () => {
+          const w = cameraVideo.videoWidth;
+          const h = cameraVideo.videoHeight;
+          const actualAspectRatio = w / h;
+          // A4枠のアスペクト比をビデオのアスペクト比に合わせる
+          const a4Frame = document.getElementById('a4Frame');
+          if (a4Frame) {
+            a4Frame.style.aspectRatio = actualAspectRatio;
+          }
+          console.log(`ビデオアスペクト比: ${w}x${h} = ${actualAspectRatio.toFixed(2)}`);
+        };
       } catch (err) {
         showStatus('error', 'カメラを起動できませんでした');
         console.error(err);
