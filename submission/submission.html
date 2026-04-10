@@ -1594,12 +1594,34 @@
     });
 
     captureBtn.addEventListener('click', () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = cameraVideo.videoWidth;
-      canvas.height = cameraVideo.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(cameraVideo, 0, 0);
-      canvas.toBlob(blob => {
+      // A4 枠の部分だけをトリミング
+      const containerRect = document.getElementById('cameraContainer').getBoundingClientRect();
+      const frameRect = document.getElementById('a4Frame').getBoundingClientRect();
+
+      // 枠の相対座標（コンテナ内での位置）
+      const frameX = frameRect.left - containerRect.left;
+      const frameY = frameRect.top - containerRect.top;
+      const frameW = frameRect.width;
+      const frameH = frameRect.height;
+
+      // ビデオ解像度でのスケーリング係数
+      const scaleX = cameraVideo.videoWidth / containerRect.width;
+      const scaleY = cameraVideo.videoHeight / containerRect.height;
+
+      // ビデオ座標系での枠の位置
+      const srcX = frameX * scaleX;
+      const srcY = frameY * scaleY;
+      const srcW = frameW * scaleX;
+      const srcH = frameH * scaleY;
+
+      // トリミング用 Canvas を作成
+      const trimCanvas = document.createElement('canvas');
+      trimCanvas.width = srcW;
+      trimCanvas.height = srcH;
+      trimCanvas.getContext('2d').drawImage(cameraVideo, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+      // トリミング後の画像を Blob に変換
+      trimCanvas.toBlob(blob => {
         blob.name = `camera_${Date.now()}.jpg`;
         addFiles([blob]);
         stopCamera();
