@@ -438,8 +438,11 @@
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
 
+      alert('📸 キャンバスに描画完了。Blob変換中...');
+
       // Blob変換 → postMessage → 閉じる
       canvas.toBlob(blob => {
+        alert('📸 toBlob コールバック実行');
         blob.arrayBuffer().then(buffer => {
           if (!window.opener) {
             alert('⚠️ 親ウィンドウが見つかりません');
