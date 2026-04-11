@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>カメラで撮影 - A4レポート</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    #a4Frame {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      aspect-ratio: 210 / 297;
+      width: min(84vw, calc(84vh * 210 / 297));
+      border: 3px dashed rgba(255, 255, 255, 0.6);
+      border-radius: 4px;
+    }
+
+    .corner {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 2px solid white;
+      border-radius: 2px;
+    }
+
+    .corner-tl { top: 2%; left: 2%; }
+    .corner-tr { top: 2%; right: 2%; }
+    .corner-bl { bottom: 2%; left: 2%; }
+    .corner-br { bottom: 2%; right: 2%; }
+
+    #controls {
+      position: fixed;
+      bottom: 32px;
+      left: 0;
+      right: 0;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding: 0 20px;
+      pointer-events: auto;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #captureBtn {
+      background: #2563eb;
+      color: white;
+    }
+
+    #captureBtn:active {
+      opacity: 0.8;
+    }
+
+    #closeBtn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    #closeBtn:active {
+      opacity: 0.7;
+    }
+
+    #error {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      padding: 16px;
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline></video>
+
+  <div id="overlay">
+    <div id="a4Frame">
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button id="captureBtn">📸 撮影する</button>
+    <button id="closeBtn">閉じる</button>
+  </div>
+
+  <div id="error"></div>
+
+  <script>
+    const video = document.getElementById('video');
+    const a4Frame = document.getElementById('a4Frame');
+    const captureBtn = document.getElementById('captureBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const errorMsg = document.getElementById('error');
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.style.display = 'block';
+      setTimeout(() => { errorMsg.style.display = 'none'; }, 3000);
+    }
+
+    function stopCamera() {
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+    }
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 4000 },
+            height: { ideal: 6000 }
+          }
+        });
+        video.srcObject = stream;
+      } catch (err) {
+        showError('カメラを起動できませんでした。ブラウザの設定でアクセスを許可してください。');
+        console.error(err);
+      }
+    }
+
+    function getCoverOffset(video) {
+      const vW = video.videoWidth;
+      const vH = video.videoHeight;
+      const eW = video.clientWidth;
+      const eH = video.clientHeight;
+
+      const videoAspect = vW / vH;
+      const elemAspect = eW / eH;
+
+      let renderW, renderH, offsetX, offsetY;
+
+      if (videoAspect > elemAspect) {
+        // ビデオが横長：上下がクリップされずに左右がはみ出す
+        renderH = eH;
+        renderW = eH * videoAspect;
+        offsetX = (renderW - eW) / 2;
+        offsetY = 0;
+      } else {
+        // ビデオが縦長：左右がクリップされずに上下がはみ出す
+        renderW = eW;
+        renderH = eW / videoAspect;
+        offsetX = 0;
+        offsetY = (renderH - eH) / 2;
+      }
+
+      return {
+        offsetX,
+        offsetY,
+        scaleX: vW / renderW,
+        scaleY: vH / renderH
+      };
+    }
+
+    captureBtn.addEventListener('click', () => {
+      if (!video.srcObject) {
+        showError('カメラがまだ起動していません。');
+        return;
+      }
+
+      const frameRect = a4Frame.getBoundingClientRect();
+      const { offsetX, offsetY, scaleX, scaleY } = getCoverOffset(video);
+
+      // 画面座標をビデオ座標に変換
+      const srcX = (frameRect.left + offsetX) * scaleX;
+      const srcY = (frameRect.top + offsetY) * scaleY;
+      const srcW = frameRect.width * scaleX;
+      const srcH = frameRect.height * scaleY;
+
+      // トリミング用Canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(srcW);
+      canvas.height = Math.round(srcH);
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+      // Blob変換 → postMessage → 閉じる
+      canvas.toBlob(blob => {
+        blob.arrayBuffer().then(buffer => {
+          window.opener.postMessage(
+            {
+              type: 'cameraCapture',
+              buffer,
+              fileName: `camera_${Date.now()}.jpg`
+            },
+            '*',
+            [buffer]
+          );
+          stopCamera();
+          window.close();
+        });
+      }, 'image/jpeg', 0.95);
+    });
+
+    closeBtn.addEventListener('click', () => {
+      stopCamera();
+      window.close();
+    });
+
+    window.addEventListener('beforeunload', stopCamera);
+
+    // カメラ起動
+    startCamera();
+  </script>
+</body>
+</html>
