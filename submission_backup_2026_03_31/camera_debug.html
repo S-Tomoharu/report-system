@@ -296,22 +296,26 @@
       const ey = Math.round(imgH * excl);
 
       const corners = [
-        { rx: ex,          ry: ey           },
-        { rx: imgW - rw - ex, ry: ey        },
-        { rx: ex,          ry: imgH - rh - ey },
-        { rx: imgW - rw - ex, ry: imgH - rh - ey },
+        { rx: ex,          ry: ey,           name: '左上'  },
+        { rx: imgW - rw - ex, ry: ey,        name: '右上'  },
+        { rx: ex,          ry: imgH - rh - ey, name: '左下' },
+        { rx: imgW - rw - ex, ry: imgH - rh - ey, name: '右下' },
       ];
 
-      return corners.every(({ rx, ry }) => {
+      let detectedCount = 0;
+      for (const { rx, ry, name } of corners) {
         const result = findMarker(imgData, imgW, imgH, rx, ry, rw, rh, MARKER_DETECT_PARAMS);
-        if (!result) return false;
-        return result.some(r =>
+        const passed = result && result.some(r =>
           r.contrast >= MARKER_DETECT_PARAMS.MIN_CONTRAST &&
           r.brightness <= MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS &&
           r.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN &&
           r.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS
         );
-      });
+        if (passed) detectedCount++;
+        console.log(`${name}: ${passed ? '✓' : '✗'}`);
+      }
+      console.log(`検出: ${detectedCount}/4`);
+      return detectedCount === 4;
     }
 
     const detectCanvas = document.createElement('canvas');
