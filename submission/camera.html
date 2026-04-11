@@ -441,6 +441,10 @@
       // Blob変換 → postMessage → 閉じる
       canvas.toBlob(blob => {
         blob.arrayBuffer().then(buffer => {
+          if (!window.opener) {
+            showError('⚠️ 親ウィンドウが見つかりません');
+            return;
+          }
           window.opener.postMessage(
             {
               type: 'cameraCapture',
