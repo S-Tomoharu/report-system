@@ -413,6 +413,7 @@
     }
 
     captureBtn.addEventListener('click', () => {
+      alert('📸 撮影ボタンクリック');
       autoShutterEnabled = false;
       if (animId) { cancelAnimationFrame(animId); animId = null; }
 
