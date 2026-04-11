@@ -37,6 +37,7 @@
       width: min(84vw, calc(84vh * 210 / 297));
       border: 3px dashed rgba(255, 255, 255, 0.6);
       border-radius: 4px;
+      transition: border-color 0.2s ease;
     }
 
     .corner {
@@ -140,7 +141,219 @@
       setTimeout(() => { errorMsg.style.display = 'none'; }, 3000);
     }
 
+    // ── 自動シャッター機能 ────────────────────────────────────
+    const MARKER_DETECT_PARAMS = {
+      MARKER_SIZE_RATIO: 0.03,
+      MARGIN_RATIO: 0.5,
+      MIN_CONTRAST: 15,
+      DARK_THRESH: 140,
+      EXCLUDE_MARGIN_RATIO: 0.03,
+      MAX_CENTER_BRIGHTNESS: 120,
+      DETECTION_RANGE_RATIO: 0.2,
+      DARK_PIXEL_RATIO_MIN: 0.6,
+      MIN_BORDER_BRIGHTNESS: 10,
+      BORDER_CHECK_DISTANCE: 3,
+      MIN_CANDIDATE_DISTANCE: 50,
+    };
+
+    function findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params) {
+      const d = imgData.data;
+      const { MARKER_SIZE_RATIO, MARGIN_RATIO, MIN_CONTRAST, DARK_THRESH, MAX_CENTER_BRIGHTNESS, DARK_PIXEL_RATIO_MIN, MIN_BORDER_BRIGHTNESS, BORDER_CHECK_DISTANCE, MIN_CANDIDATE_DISTANCE } = params;
+
+      const winW = Math.max(8, Math.round(imgW * MARKER_SIZE_RATIO));
+      const winH = Math.max(8, Math.round(imgH * MARKER_SIZE_RATIO));
+
+      const gray = new Uint8Array(rw * rh);
+      for (let y = 0; y < rh; y++) {
+        for (let x = 0; x < rw; x++) {
+          const i = ((ry + y) * imgW + (rx + x)) * 4;
+          gray[y * rw + x] = Math.round(d[i] * 0.299 + d[i+1] * 0.587 + d[i+2] * 0.114);
+        }
+      }
+
+      const W1 = rw + 1;
+      const integ = new Int32Array((rh + 1) * W1);
+      for (let y = 1; y <= rh; y++) {
+        for (let x = 1; x <= rw; x++) {
+          integ[y * W1 + x] = gray[(y-1) * rw + (x-1)]
+            + integ[(y-1) * W1 + x]
+            + integ[y * W1 + (x-1)]
+            - integ[(y-1) * W1 + (x-1)];
+        }
+      }
+
+      const stepX = Math.max(1, Math.round(winW / 3));
+      const stepY = Math.max(1, Math.round(winH / 3));
+      const margin = Math.max(4, Math.round(winW * MARGIN_RATIO));
+
+      const allCandidates = [];
+
+      for (let y = 0; y + winH <= rh; y += stepY) {
+        for (let x = 0; x + winW <= rw; x += stepX) {
+          const centerSum = integ[(y+winH) * W1 + (x+winW)]
+                          - integ[y        * W1 + (x+winW)]
+                          - integ[(y+winH) * W1 + x]
+                          + integ[y        * W1 + x];
+
+          const x0 = Math.max(0, x - margin);
+          const y0 = Math.max(0, y - margin);
+          const x1 = Math.min(rw, x + winW + margin);
+          const y1 = Math.min(rh, y + winH + margin);
+
+          const outerSum = integ[y1 * W1 + x1]
+                         - integ[y0 * W1 + x1]
+                         - integ[y1 * W1 + x0]
+                         + integ[y0 * W1 + x0];
+
+          const surroundSum = outerSum - centerSum;
+          const surroundPixels = (x1 - x0) * (y1 - y0) - (winW * winH);
+
+          if (surroundPixels <= 0) continue;
+
+          const surroundAvg = surroundSum / surroundPixels;
+          const centerAvg = centerSum / (winW * winH);
+          const contrast = surroundAvg - centerAvg;
+
+          const candidate = { contrast, x, y, centerAvg };
+          allCandidates.push(candidate);
+          allCandidates.sort((a, b) => b.contrast - a.contrast);
+          if (allCandidates.length > 10) allCandidates.pop();
+        }
+      }
+
+      if (allCandidates.length === 0) return null;
+
+      const candidates = [];
+      for (const cand of allCandidates) {
+        let isFarEnough = true;
+        for (const selected of candidates) {
+          const dist = Math.sqrt(Math.pow(cand.x - selected.x, 2) + Math.pow(cand.y - selected.y, 2));
+          if (dist < MIN_CANDIDATE_DISTANCE) {
+            isFarEnough = false;
+            break;
+          }
+        }
+        if (isFarEnough) {
+          candidates.push(cand);
+          if (candidates.length >= 3) break;
+        }
+      }
+
+      if (candidates.length === 0) return null;
+
+      const results = [];
+      for (const cand of candidates) {
+        let sx = 0, sy = 0, cnt = 0;
+        const cx1 = Math.min(cand.x + winW, rw), cy1 = Math.min(cand.y + winH, rh);
+        for (let y = cand.y; y < cy1; y++) {
+          for (let x = cand.x; x < cx1; x++) {
+            if (gray[y * rw + x] < DARK_THRESH) {
+              sx += rx + x;
+              sy += ry + y;
+              cnt++;
+            }
+          }
+        }
+
+        if (cnt === 0) continue;
+
+        const darkRatio = cnt / (winW * winH);
+
+        let borderBrightness = 255;
+        const borderPixels = [];
+        const bx1 = Math.min(cand.x + winW, rw), by1 = Math.min(cand.y + winH, rh);
+        for (let y = Math.max(0, cand.y - BORDER_CHECK_DISTANCE); y < Math.min(rh, by1 + BORDER_CHECK_DISTANCE); y++) {
+          for (let x = Math.max(0, cand.x - BORDER_CHECK_DISTANCE); x < Math.min(rw, bx1 + BORDER_CHECK_DISTANCE); x++) {
+            if ((x < cand.x || x >= bx1) || (y < cand.y || y >= by1)) {
+              borderPixels.push(gray[y * rw + x]);
+            }
+          }
+        }
+
+        if (borderPixels.length > 0) {
+          borderBrightness = borderPixels.reduce((a, b) => a + b, 0) / borderPixels.length;
+        }
+
+        results.push({
+          x: sx / cnt,
+          y: sy / cnt,
+          contrast: cand.contrast,
+          brightness: cand.centerAvg,
+          darkRatio: darkRatio,
+          borderBrightness: borderBrightness
+        });
+      }
+
+      return results.length > 0 ? results : null;
+    }
+
+    function detectAllCorners(imgData, imgW, imgH) {
+      const range = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
+      const excl = MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO;
+      const rw = Math.round(imgW * range);
+      const rh = Math.round(imgH * range);
+      const ex = Math.round(imgW * excl);
+      const ey = Math.round(imgH * excl);
+
+      const corners = [
+        { rx: ex,          ry: ey           },
+        { rx: imgW - rw - ex, ry: ey        },
+        { rx: ex,          ry: imgH - rh - ey },
+        { rx: imgW - rw - ex, ry: imgH - rh - ey },
+      ];
+
+      return corners.every(({ rx, ry }) => {
+        const result = findMarker(imgData, imgW, imgH, rx, ry, rw, rh, MARKER_DETECT_PARAMS);
+        if (!result) return false;
+        return result.some(r =>
+          r.contrast >= MARKER_DETECT_PARAMS.MIN_CONTRAST &&
+          r.brightness <= MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS &&
+          r.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN &&
+          r.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS
+        );
+      });
+    }
+
+    const detectCanvas = document.createElement('canvas');
+    const DETECT_WIDTH = 640;
+    let autoShutterEnabled = true;
+    let frameCount = 0;
+    let detectCount = 0;
+    const DETECT_INTERVAL = 6;
+    const DETECT_THRESHOLD = 15;
+    let animId = null;
+
+    function autoShutterLoop() {
+      animId = requestAnimationFrame(autoShutterLoop);
+      if (!video.srcObject || !autoShutterEnabled) return;
+
+      frameCount++;
+      if (frameCount % DETECT_INTERVAL !== 0) return;
+
+      const scale = DETECT_WIDTH / video.videoWidth;
+      detectCanvas.width = DETECT_WIDTH;
+      detectCanvas.height = Math.round(video.videoHeight * scale);
+      detectCanvas.getContext('2d').drawImage(video, 0, 0, detectCanvas.width, detectCanvas.height);
+
+      const imgData = detectCanvas.getContext('2d').getImageData(
+        0, 0, detectCanvas.width, detectCanvas.height
+      );
+
+      if (detectAllCorners(imgData, detectCanvas.width, detectCanvas.height)) {
+        detectCount++;
+        a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
+        if (detectCount >= DETECT_THRESHOLD) {
+          autoShutterEnabled = false;
+          captureBtn.click();
+        }
+      } else {
+        detectCount = 0;
+        a4Frame.style.borderColor = 'rgba(255, 255, 255, 0.6)';
+      }
+    }
+
     function stopCamera() {
+      if (animId) { cancelAnimationFrame(animId); animId = null; }
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
         video.srcObject = null;
@@ -157,6 +370,9 @@
           }
         });
         video.srcObject = stream;
+        video.addEventListener('loadedmetadata', () => {
+          autoShutterLoop();
+        }, { once: true });
       } catch (err) {
         showError('カメラを起動できませんでした。ブラウザの設定でアクセスを許可してください。');
         console.error(err);
@@ -197,6 +413,9 @@
     }
 
     captureBtn.addEventListener('click', () => {
+      autoShutterEnabled = false;
+      if (animId) { cancelAnimationFrame(animId); animId = null; }
+
       if (!video.srcObject) {
         showError('カメラがまだ起動していません。');
         return;
