@@ -302,16 +302,20 @@
         { rx: imgW - rw - ex, ry: imgH - rh - ey },
       ];
 
-      return corners.every(({ rx, ry }) => {
+      let detectedCount = 0;
+      for (const { rx, ry } of corners) {
         const result = findMarker(imgData, imgW, imgH, rx, ry, rw, rh, MARKER_DETECT_PARAMS);
-        if (!result) return false;
-        return result.some(r =>
+        if (result && result.some(r =>
           r.contrast >= MARKER_DETECT_PARAMS.MIN_CONTRAST &&
           r.brightness <= MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS &&
           r.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN &&
           r.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS
-        );
-      });
+        )) {
+          detectedCount++;
+        }
+      }
+      // テスト：4隅中 2 つ以上検出できたら true
+      return detectedCount >= 2;
     }
 
     const detectCanvas = document.createElement('canvas');
