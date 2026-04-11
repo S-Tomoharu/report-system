@@ -302,24 +302,20 @@
         { rx: imgW - rw - ex, ry: imgH - rh - ey },
       ];
 
-      let detectedCount = 0;
-      for (const { rx, ry } of corners) {
+      return corners.every(({ rx, ry }) => {
         const result = findMarker(imgData, imgW, imgH, rx, ry, rw, rh, MARKER_DETECT_PARAMS);
-        if (result && result.some(r =>
+        if (!result) return false;
+        return result.some(r =>
           r.contrast >= MARKER_DETECT_PARAMS.MIN_CONTRAST &&
           r.brightness <= MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS &&
           r.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN &&
           r.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS
-        )) {
-          detectedCount++;
-        }
-      }
-      // テスト：4隅中 2 つ以上検出できたら true
-      return detectedCount >= 2;
+        );
+      });
     }
 
     const detectCanvas = document.createElement('canvas');
-    const DETECT_WIDTH = 640;
+    const DETECT_WIDTH = 1280;  // テスト：640 → 1280 に拡大
     let autoShutterEnabled = true;
     let frameCount = 0;
     let detectCount = 0;
@@ -343,7 +339,7 @@
         0, 0, detectCanvas.width, detectCanvas.height
       );
 
-      if (true) { // 仮：テスト用に常に true
+      if (detectAllCorners(imgData, detectCanvas.width, detectCanvas.height)) {
         detectCount++;
         console.log(`マーカー検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
