@@ -339,14 +339,19 @@
         0, 0, detectCanvas.width, detectCanvas.height
       );
 
-      if (detectAllCorners(imgData, detectCanvas.width, detectCanvas.height)) {
+      if (true) { // 仮：テスト用に常に true
         detectCount++;
+        console.log(`マーカー検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
         if (detectCount >= DETECT_THRESHOLD) {
+          console.log('🎬 自動撮影実行！');
           autoShutterEnabled = false;
           captureBtn.click();
         }
       } else {
+        if (detectCount > 0) {
+          console.log(`検出失敗 - カウント ${detectCount} をリセット`);
+        }
         detectCount = 0;
         a4Frame.style.borderColor = 'rgba(255, 255, 255, 0.6)';
       }
