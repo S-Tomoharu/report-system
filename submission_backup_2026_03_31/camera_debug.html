@@ -315,12 +315,12 @@
     }
 
     const detectCanvas = document.createElement('canvas');
-    const DETECT_WIDTH = 1280;  // テスト：640 → 1280 に拡大
+    const DETECT_WIDTH = 1280;
     let autoShutterEnabled = true;
     let frameCount = 0;
     let detectCount = 0;
-    const DETECT_INTERVAL = 6;
-    const DETECT_THRESHOLD = 15;
+    const DETECT_INTERVAL = 3;    // 短い時間用に 6 → 3
+    const DETECT_THRESHOLD = 5;   // 短い時間用に 15 → 5（約 0.5 秒）
     let animId = null;
 
     function autoShutterLoop() {

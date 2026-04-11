@@ -315,12 +315,12 @@
     }
 
     const detectCanvas = document.createElement('canvas');
-    const DETECT_WIDTH = 640;
+    const DETECT_WIDTH = 1280;
     let autoShutterEnabled = true;
     let frameCount = 0;
     let detectCount = 0;
-    const DETECT_INTERVAL = 6;
-    const DETECT_THRESHOLD = 15;
+    const DETECT_INTERVAL = 3;    // 3フレームに1回検出
+    const DETECT_THRESHOLD = 5;   // 5回連続で約 0.5 秒
     let animId = null;
 
     function autoShutterLoop() {
