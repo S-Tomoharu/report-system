@@ -179,26 +179,6 @@
       <div class="file-input-group">
         <label>📱 カメラで撮影:</label>
         <button type="button" id="cameraBtn" style="width:100%; padding:10px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">📷 カメラを起動</button>
-        <div id="cameraArea" style="display:none; margin-top:10px;">
-          <div id="cameraContainer" style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#000; aspect-ratio:9/16;">
-            <video id="cameraVideo" autoplay playsinline style="width:100%; height:100%; object-fit:cover; display:block;"></video>
-            <!-- A4ガイド枠と四隅マーカー -->
-            <div id="cameraGuide" style="position:absolute; inset:0; pointer-events:none; display:flex; align-items:center; justify-content:center;">
-              <!-- A4比率枠（縦向き）- アスペクト比を厳密に保つ -->
-              <div id="a4Frame" style="width:100%; max-height:100%; aspect-ratio:210/297; border:3px dashed rgba(255,255,255,0.6); border-radius:4px; display:flex; position:relative;">
-                <!-- マーカー：A4枠の四隅、内側2%の位置 -->
-                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; left:2%;"></div>
-                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; right:2%;"></div>
-                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:2%; left:2%;"></div>
-                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:2%; right:2%;"></div>
-              </div>
-            </div>
-          </div>
-          <div style="margin-top:8px; display:flex; gap:8px;">
-            <button type="button" id="captureBtn" style="flex:1; padding:10px; background:#16a34a; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">📸 撮影する</button>
-            <button type="button" id="cameraCloseBtn" style="flex:1; padding:10px; background:#6b7280; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">閉じる</button>
-          </div>
-        </div>
       </div>
 
       <div class="params">
@@ -716,71 +696,47 @@
       if (e.target === modal) modal.classList.remove('active');
     });
 
-    // ── カメラ機能 ──────────────────────────────────────
-    const cameraVideo = document.getElementById('cameraVideo');
-    const cameraArea = document.getElementById('cameraArea');
+    // ── カメラ機能（別ウィンドウ方式） ──────────────────────────────────────
     const cameraBtn = document.getElementById('cameraBtn');
-    const captureBtn = document.getElementById('captureBtn');
-    const cameraCloseBtn = document.getElementById('cameraCloseBtn');
     let capturedBlob = null;
+    let cameraWindow = null;
 
-    function stopCamera() {
-      const stream = cameraVideo.srcObject;
-      if (stream) stream.getTracks().forEach(t => t.stop());
-      cameraVideo.srcObject = null;
-      cameraArea.style.display = 'none';
-    }
+    cameraBtn.addEventListener('click', () => {
+      // すでに開いている場合はフォーカスを戻すだけ
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.focus();
+        return;
+      }
 
-    cameraBtn.addEventListener('click', async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 4000 }, height: { ideal: 6000 } }
-        });
-        cameraVideo.srcObject = stream;
-        cameraArea.style.display = 'block';
-      } catch (err) {
-        alert('カメラを起動できませんでした: ' + err.message);
+      // ポップアップブロッカー対策：クリックイベントのコンテキスト内で window.open を呼ぶ
+      const w = 480;
+      const h = 780;
+      const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+      const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+
+      cameraWindow = window.open(
+        'camera_debug.html',
+        'cameraDebug',
+        `width=${w},height=${h},left=${left},top=${top},resizable=yes`
+      );
+
+      if (!cameraWindow) {
+        alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
       }
     });
 
-    captureBtn.addEventListener('click', () => {
-      // A4 枠の部分だけをトリミング
-      const containerRect = document.getElementById('cameraContainer').getBoundingClientRect();
-      const frameRect = document.getElementById('a4Frame').getBoundingClientRect();
+    // camera_debug.html からの撮影結果を受信
+    window.addEventListener('message', (event) => {
+      // セキュリティ：typeチェック
+      if (event.data?.type !== 'cameraCaptureDebug') return;
 
-      // 枠の相対座標（コンテナ内での位置）
-      const frameX = frameRect.left - containerRect.left;
-      const frameY = frameRect.top - containerRect.top;
-      const frameW = frameRect.width;
-      const frameH = frameRect.height;
+      const { buffer, fileName } = event.data;
+      capturedBlob = new Blob([buffer], { type: 'image/jpeg' });
+      capturedBlob.name = fileName;
 
-      // ビデオ解像度でのスケーリング係数
-      const scaleX = cameraVideo.videoWidth / containerRect.width;
-      const scaleY = cameraVideo.videoHeight / containerRect.height;
-
-      // ビデオ座標系での枠の位置
-      const srcX = frameX * scaleX;
-      const srcY = frameY * scaleY;
-      const srcW = frameW * scaleX;
-      const srcH = frameH * scaleY;
-
-      // トリミング用 Canvas を作成
-      const trimCanvas = document.createElement('canvas');
-      trimCanvas.width = srcW;
-      trimCanvas.height = srcH;
-      trimCanvas.getContext('2d').drawImage(cameraVideo, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-
-      // トリミング後の画像を Blob に変換
-      trimCanvas.toBlob(blob => {
-        blob.name = `camera_${Date.now()}.jpg`;
-        capturedBlob = blob;
-        stopCamera();
-        // 自動的に分析を実行
-        document.getElementById('analyzeBtn').click();
-      }, 'image/jpeg', 0.95);
+      // 自動的に分析を実行
+      document.getElementById('analyzeBtn').click();
     });
-
-    cameraCloseBtn.addEventListener('click', stopCamera);
 
     // メイン分析
     document.getElementById('analyzeBtn').addEventListener('click', async () => {
