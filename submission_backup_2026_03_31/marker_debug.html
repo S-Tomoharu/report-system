@@ -187,10 +187,10 @@
               <!-- A4比率枠（縦向き）- アスペクト比を厳密に保つ -->
               <div id="a4Frame" style="width:100%; max-height:100%; aspect-ratio:210/297; border:3px dashed rgba(255,255,255,0.6); border-radius:4px; display:flex; position:relative;">
                 <!-- マーカー：A4枠の四隅、内側2%の位置 -->
-                <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; left:2%;"></div>
-                <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; right:2%;"></div>
-                <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:2%; left:2%;"></div>
-                <div style="position:absolute; width:20px; height:20px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:2%; right:2%;"></div>
+                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; left:2%;"></div>
+                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; top:2%; right:2%;"></div>
+                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:2%; left:2%;"></div>
+                <div style="position:absolute; width:40px; height:40px; background:rgba(255,255,255,0.8); border:2px solid white; border-radius:2px; bottom:2%; right:2%;"></div>
               </div>
             </div>
           </div>
@@ -232,7 +232,7 @@
         </div>
         <div class="param-group">
           <label>枠の最小輝度 (MIN_BORDER_BRIGHTNESS)</label>
-          <input type="number" id="paramMinBorderBrightness" value="100" step="10" min="0" max="255">
+          <input type="number" id="paramMinBorderBrightness" value="10" step="10" min="0" max="255">
         </div>
         <div class="param-group">
           <label>枠チェック距離 (BORDER_CHECK_DISTANCE)</label>
@@ -417,7 +417,7 @@
       MAX_CENTER_BRIGHTNESS: 120,   // 中央の最大輝度（これ以下が黒い）
       DETECTION_RANGE_RATIO: 0.2,   // 各隅からの探索範囲（0.2 = 画像の20%まで）
       DARK_PIXEL_RATIO_MIN: 0.6,    // マーカー内の暗ピクセル比率の最小値（0.6 = 60%以上）
-      MIN_BORDER_BRIGHTNESS: 200,    // 枠が「白い」と判定する最小輝度
+      MIN_BORDER_BRIGHTNESS: 10,    // 枠が「白い」と判定する最小輝度
       BORDER_CHECK_DISTANCE: 3,      // 輪郭から外側何ピクセルでチェックするか
       MIN_CANDIDATE_DISTANCE: 50,    // 候補同士の最小距離（ピクセル）
     };
@@ -734,7 +734,7 @@
     cameraBtn.addEventListener('click', async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
+          video: { facingMode: 'environment', width: { ideal: 4000 }, height: { ideal: 6000 } }
         });
         cameraVideo.srcObject = stream;
         cameraArea.style.display = 'block';
