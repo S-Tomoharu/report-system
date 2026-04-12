@@ -200,7 +200,7 @@
         </div>
         <div class="param-group">
           <label>中央最大輝度 (MAX_CENTER_BRIGHTNESS)</label>
-          <input type="number" id="paramMaxCenterBrightness" value="100" step="5" min="0" max="255">
+          <input type="number" id="paramMaxCenterBrightness" value="120" step="5" min="0" max="255">
         </div>
         <div class="param-group">
           <label>探索範囲比率 (DETECTION_RANGE_RATIO)</label>
@@ -729,6 +729,8 @@
     window.addEventListener('message', (event) => {
       // セキュリティ：typeチェック
       if (event.data?.type !== 'cameraCaptureDebug') return;
+
+      alert('📸 撮影されました！分析を開始します...');
 
       const { buffer, fileName } = event.data;
       capturedBlob = new Blob([buffer], { type: 'image/jpeg' });
