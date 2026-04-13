@@ -482,14 +482,10 @@
               fileName: `camera_${Date.now()}.jpg`
             },
             '*'
-            // Transferable を外してテスト
           );
 
           stopCamera();
-          // 少し待ってから閉じる（ユーザーが「送信中」を見る時間を作る）
-          setTimeout(() => {
-            window.close();
-          }, 300);
+          // marker_debug からの確認メッセージを待つ（message listener で処理）
         };
 
         reader.onerror = (e) => {
@@ -498,6 +494,12 @@
 
         reader.readAsArrayBuffer(blob);
       }, 'image/jpeg', 0.95);
+    });
+
+    // marker_debug からの確認メッセージを受け取ったら window を閉じる
+    window.addEventListener('message', (event) => {
+      if (event.data?.type !== 'cameraCaptureAcknowledged') return;
+      window.close();
     });
 
     closeBtn.addEventListener('click', () => {

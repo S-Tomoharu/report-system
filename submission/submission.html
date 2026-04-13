@@ -1564,6 +1564,15 @@
       Object.defineProperty(blob, 'name', { value: fileName });
 
       addFiles([blob]);
+
+      // camera.html に「受け取った」という確認メッセージを返す
+      // event.source は camera.html ウィンドウへの参照
+      if (event.source) {
+        event.source.postMessage(
+          { type: 'cameraCaptureAcknowledged' },
+          '*'
+        );
+      }
     });
 
   </script>

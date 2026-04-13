@@ -743,6 +743,15 @@
         document.body.style.backgroundColor = '#f5f5f5';
       }, 300);
 
+      // camera_debug に「受け取った」という確認メッセージを返す
+      // event.source は camera_debug ウィンドウへの参照
+      if (event.source) {
+        event.source.postMessage(
+          { type: 'cameraCaptureAcknowledged' },
+          '*'
+        );
+      }
+
       // 自動的に分析を実行
       document.getElementById('analyzeBtn').click();
     });
