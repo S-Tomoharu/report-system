@@ -598,6 +598,7 @@
     const DETECT_INTERVAL = 3;    // 短い時間用に 6 → 3
     const DETECT_THRESHOLD = 5;   // 短い時間用に 15 → 5（約 0.5 秒）
     let animId = null;
+    let savedDetectCanvas = null;  // 自動撮影時に検出した detectCanvas を保存
 
     function drawDetectionMarkers(bestSet) {
       if (!bestSet || bestSet.length !== 4) return;
@@ -727,6 +728,11 @@
         if (detectCount >= DETECT_THRESHOLD) {
           console.log('自動撮影実行！');
           autoShutterEnabled = false;
+          // 検出時点の detectCanvas を保存
+          savedDetectCanvas = document.createElement('canvas');
+          savedDetectCanvas.width = detectCanvas.width;
+          savedDetectCanvas.height = detectCanvas.height;
+          savedDetectCanvas.getContext('2d').drawImage(detectCanvas, 0, 0);
           captureBtn.click();
         }
       } else {
@@ -824,7 +830,21 @@
       canvas.height = Math.round(srcH);
 
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+
+      // savedDetectCanvas があれば（自動撮影時）それを使う、なければ video から撮る
+      if (savedDetectCanvas) {
+        // detectCanvas 座標系に変換
+        const detScale = DETECT_WIDTH / video.videoWidth;
+        const detSrcX = srcX * detScale;
+        const detSrcY = srcY * detScale;
+        const detSrcW = srcW * detScale;
+        const detSrcH = srcH * detScale;
+        ctx.drawImage(savedDetectCanvas, detSrcX, detSrcY, detSrcW, detSrcH, 0, 0, srcW, srcH);
+        console.log('自動撮影時の detectCanvas を使用');
+      } else {
+        ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+        console.log('手動撮影：video から撮影');
+      }
 
       alert('📸 キャンバスに描画完了。Blob変換中...');
 
@@ -860,6 +880,7 @@
           );
 
           stopCamera();
+          savedDetectCanvas = null;  // リセット
           // marker_debug からの確認メッセージを待つ（message listener で処理）
         };
 
