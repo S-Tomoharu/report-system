@@ -456,23 +456,49 @@
       // Blob変換 → postMessage → 閉じる
       canvas.toBlob(blob => {
         alert('📸 toBlob コールバック実行');
-        blob.arrayBuffer().then(buffer => {
-          if (!window.opener) {
-            alert('⚠️ 親ウィンドウが見つかりません');
+        try {
+          alert(`📸 blob = ${blob}`);
+          alert(`📸 blob.size = ${blob ? blob.size : 'blob is null'}`);
+          alert(`📸 blob.type = ${blob ? blob.type : 'blob is null'}`);
+
+          if (!blob) {
+            alert('⚠️ Blob が null です');
             return;
           }
-          window.opener.postMessage(
-            {
-              type: 'cameraCaptureDebug',
-              buffer,
-              fileName: `camera_${Date.now()}.jpg`
-            },
-            '*',
-            [buffer]
-          );
-          stopCamera();
-          window.close();
-        });
+
+          alert('📸 blob.arrayBuffer() 呼び出し直前');
+          const arrayBufferPromise = blob.arrayBuffer();
+          alert(`📸 arrayBuffer() 関数取得完了、Promise = ${arrayBufferPromise}`);
+
+          arrayBufferPromise.then(buffer => {
+            alert(`📸 then() コールバック実行、buffer.byteLength = ${buffer.byteLength}`);
+            alert(`📸 window.opener = ${window.opener ? 'あり' : 'なし'}`);
+            if (!window.opener) {
+              alert('⚠️ 親ウィンドウが見つかりません');
+              return;
+            }
+            alert('📸 postMessage 実行開始');
+            window.opener.postMessage(
+              {
+                type: 'cameraCaptureDebug',
+                buffer,
+                fileName: `camera_${Date.now()}.jpg`
+              },
+              '*',
+              [buffer]
+            );
+            alert('📸 postMessage 実行完了');
+            alert('📸 stopCamera() 実行開始');
+            stopCamera();
+            alert('📸 stopCamera() 実行完了');
+            alert('📸 window.close() 実行開始');
+            window.close();
+          }).catch(err => {
+            alert(`⚠️ then() エラー: ${err}`);
+          });
+        } catch (e) {
+          alert(`⚠️ try-catch エラー: ${e}`);
+        }
       }, 'image/jpeg', 0.95);
     });
 
