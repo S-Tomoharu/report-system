@@ -469,15 +469,15 @@
               buffer,
               fileName: `camera_${Date.now()}.jpg`
             },
-            '*',
-            [buffer]
+            '*'
+            // Transferable を外してテスト
           );
 
           stopCamera();
           // 少し待ってから閉じる（ユーザーが「送信中」を見る時間を作る）
           setTimeout(() => {
             window.close();
-          }, 200);
+          }, 300);
         };
 
         reader.onerror = (err) => {
