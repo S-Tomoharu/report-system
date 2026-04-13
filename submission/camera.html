@@ -443,15 +443,26 @@
 
       // Blob変換 → postMessage → 閉じる
       canvas.toBlob(blob => {
+        if (!blob) {
+          showError('⚠️ Blob が null です');
+          return;
+        }
+
         console.log(`📸 toBlob callback実行、blob.size = ${blob.size}`);
-        console.log('📸 blob.arrayBuffer() 呼び出し開始');
-        blob.arrayBuffer().then(buffer => {
-          console.log(`📸 blob.arrayBuffer() 完了、buffer.byteLength = ${buffer.byteLength}`);
-          console.log(`📸 window.opener = ${window.opener ? 'あり' : 'なし'}`);
+
+        // iOS Safari 非対応の blob.arrayBuffer() の代わりに FileReader を使用
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+          console.log('📸 FileReader.onload 実行');
+          const buffer = e.target.result;
+          console.log(`📸 buffer.byteLength = ${buffer.byteLength}`);
+
           if (!window.opener) {
             showError('⚠️ 親ウィンドウが見つかりません');
             return;
           }
+
           console.log('📸 postMessage 実行開始');
           window.opener.postMessage(
             {
@@ -468,11 +479,15 @@
           console.log('📸 stopCamera() 実行完了');
           console.log('📸 window.close() 実行開始');
           window.close();
-          console.log('📸 window.close() 実行後（このログは通常出ない）');
-        }).catch(err => {
-          console.error(`⚠️ arrayBuffer() エラー: ${err}`);
-          showError(`エラー: ${err}`);
-        });
+        };
+
+        reader.onerror = (err) => {
+          console.error(`⚠️ FileReader エラー: ${err}`);
+          showError(`ファイル読み込みエラー: ${err}`);
+        };
+
+        console.log('📸 FileReader.readAsArrayBuffer() 呼び出し');
+        reader.readAsArrayBuffer(blob);
       }, 'image/jpeg', 0.95);
     });
 
