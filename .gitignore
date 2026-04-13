@@ -6,7 +6,9 @@ config.local.js
 config.template.js
 quiz/gas/
 quiz/tools/
-submission_backup_*/
+submission_backup_*/*
+!submission_backup_2026_03_31/marker_debug.html
+!submission_backup_2026_03_31/camera_debug.html
 submission/claude_ocr.gs
 submission/gemini_ocr.gs
 submission/gemini_ocr_test.html
