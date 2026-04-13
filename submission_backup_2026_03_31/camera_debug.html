@@ -288,8 +288,11 @@
     }
 
     function detectAllCorners(imgData, imgW, imgH) {
-      const range = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
-      const excl = MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO;
+      // 親ウィンドウ（marker_debug.html）のパラメータを優先的に使用
+      const params = (window.opener && window.opener.MARKER_DETECT_PARAMS) || MARKER_DETECT_PARAMS;
+
+      const range = params.DETECTION_RANGE_RATIO;
+      const excl = params.EXCLUDE_MARGIN_RATIO;
       const rw = Math.round(imgW * range);
       const rh = Math.round(imgH * range);
       const ex = Math.round(imgW * excl);
@@ -304,12 +307,12 @@
 
       let detectedCount = 0;
       for (const { rx, ry, name } of corners) {
-        const result = findMarker(imgData, imgW, imgH, rx, ry, rw, rh, MARKER_DETECT_PARAMS);
+        const result = findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params);
         const passed = result && result.some(r =>
-          r.contrast >= MARKER_DETECT_PARAMS.MIN_CONTRAST &&
-          r.brightness <= MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS &&
-          r.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN &&
-          r.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS
+          r.contrast >= params.MIN_CONTRAST &&
+          r.brightness <= params.MAX_CENTER_BRIGHTNESS &&
+          r.darkRatio >= params.DARK_PIXEL_RATIO_MIN &&
+          r.borderBrightness >= params.MIN_BORDER_BRIGHTNESS
         );
         if (passed) detectedCount++;
         console.log(`${name}: ${passed ? '✓' : '✗'}`);
