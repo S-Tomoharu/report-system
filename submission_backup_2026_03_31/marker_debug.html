@@ -730,7 +730,7 @@
       // セキュリティ：typeチェック
       if (event.data?.type !== 'cameraCaptureDebug') return;
 
-      alert('📸 撮影されました！分析を開始します...');
+      console.log('📸 撮影されました！分析を開始します...');
       console.log('📸 postMessage 受け取り完了', event.data);
 
       const { buffer, fileName } = event.data;
