@@ -441,6 +441,10 @@
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
 
+      // 送信中UI表示
+      const original = document.body.innerHTML;
+      document.body.innerHTML = '<div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 24px; color: white; z-index: 1000;"><div style="text-align: center;"><div>📸 送信中...</div><div style="font-size: 12px; margin-top: 10px; color: #ccc;">カメラを分析しています</div></div></div>';
+
       // Blob変換 → postMessage → 閉じる
       canvas.toBlob(blob => {
         if (!blob) {
@@ -448,22 +452,17 @@
           return;
         }
 
-        console.log(`📸 toBlob callback実行、blob.size = ${blob.size}`);
-
         // iOS Safari 非対応の blob.arrayBuffer() の代わりに FileReader を使用
         const reader = new FileReader();
 
         reader.onload = (e) => {
-          console.log('📸 FileReader.onload 実行');
           const buffer = e.target.result;
-          console.log(`📸 buffer.byteLength = ${buffer.byteLength}`);
 
           if (!window.opener) {
             showError('⚠️ 親ウィンドウが見つかりません');
             return;
           }
 
-          console.log('📸 postMessage 実行開始');
           window.opener.postMessage(
             {
               type: 'cameraCapture',
@@ -473,20 +472,18 @@
             '*',
             [buffer]
           );
-          console.log('📸 postMessage 実行完了');
-          console.log('📸 stopCamera() 実行開始');
+
           stopCamera();
-          console.log('📸 stopCamera() 実行完了');
-          console.log('📸 window.close() 実行開始');
-          window.close();
+          // 少し待ってから閉じる（ユーザーが「送信中」を見る時間を作る）
+          setTimeout(() => {
+            window.close();
+          }, 200);
         };
 
         reader.onerror = (err) => {
-          console.error(`⚠️ FileReader エラー: ${err}`);
           showError(`ファイル読み込みエラー: ${err}`);
         };
 
-        console.log('📸 FileReader.readAsArrayBuffer() 呼び出し');
         reader.readAsArrayBuffer(blob);
       }, 'image/jpeg', 0.95);
     });
