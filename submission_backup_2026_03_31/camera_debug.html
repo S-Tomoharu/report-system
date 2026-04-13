@@ -113,6 +113,7 @@
   <video id="video" autoplay playsinline></video>
 
   <div id="overlay">
+    <canvas id="detectionOverlay" style="position: fixed; inset: 0; pointer-events: none;"></canvas>
     <div id="a4Frame">
       <div class="corner corner-tl"></div>
       <div class="corner corner-tr"></div>
@@ -497,12 +498,61 @@
 
     const detectCanvas = document.createElement('canvas');
     const DETECT_WIDTH = 1280;
+    const overlayCanvas = document.getElementById('detectionOverlay');
     let autoShutterEnabled = true;
     let frameCount = 0;
     let detectCount = 0;
     const DETECT_INTERVAL = 3;    // 短い時間用に 6 → 3
     const DETECT_THRESHOLD = 5;   // 短い時間用に 15 → 5（約 0.5 秒）
     let animId = null;
+
+    function drawDetectionMarkers(bestSet) {
+      if (!bestSet || bestSet.length !== 4) return;
+
+      overlayCanvas.width = video.clientWidth;
+      overlayCanvas.height = video.clientHeight;
+
+      // detectCanvas 座標 → video 座標
+      const videoScale = video.videoWidth / DETECT_WIDTH;
+      const videoMarkers = bestSet.map(pt => ({
+        x: pt.x * videoScale,
+        y: pt.y * videoScale
+      }));
+
+      // video 座標 → 画面座標
+      const offset = getCoverOffset(video);
+      const screenMarkers = videoMarkers.map(m => ({
+        x: m.x / offset.scaleX + offset.offsetX,
+        y: m.y / offset.scaleY + offset.offsetY
+      }));
+
+      const ctx = overlayCanvas.getContext('2d');
+
+      // 4点を赤い円で描画
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+      for (const m of screenMarkers) {
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // 4点を赤い線で結ぶ
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(screenMarkers[0].x, screenMarkers[0].y);
+      for (let i = 1; i < 4; i++) {
+        ctx.lineTo(screenMarkers[i].x, screenMarkers[i].y);
+      }
+      ctx.lineTo(screenMarkers[0].x, screenMarkers[0].y); // 閉じる
+      ctx.stroke();
+    }
+
+    function clearDetectionOverlay() {
+      overlayCanvas.width = video.clientWidth;
+      overlayCanvas.height = video.clientHeight;
+      overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    }
 
     function autoShutterLoop() {
       animId = requestAnimationFrame(autoShutterLoop);
@@ -525,6 +575,7 @@
       console.log(`候補数: ${candidates.length}`);
       const bestSet = selectBestMarkerSet(candidates, detectCanvas.width, detectCanvas.height, params);
       if (bestSet) {
+        drawDetectionMarkers(bestSet);
         detectCount++;
         console.log(`マーカー検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
@@ -534,6 +585,7 @@
           captureBtn.click();
         }
       } else {
+        clearDetectionOverlay();
         if (detectCount > 0) {
           console.log(`検出失敗 - カウント ${detectCount} をリセット`);
         }

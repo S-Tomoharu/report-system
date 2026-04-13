@@ -757,6 +757,196 @@
     });
 
     // メイン分析
+    // ── 全体スキャン方式：候補検出 ────────────────────────────
+    function detectAllMarkerCandidates(imgData, imgW, imgH, params) {
+      const d = imgData.data;
+      const { MARKER_SIZE_RATIO, MARGIN_RATIO, MIN_CONTRAST, DARK_THRESH,
+              MAX_CENTER_BRIGHTNESS, DARK_PIXEL_RATIO_MIN, MIN_BORDER_BRIGHTNESS,
+              BORDER_CHECK_DISTANCE, MIN_CANDIDATE_DISTANCE,
+              COARSE_STEP_MULTIPLIER = 1.0, FINE_SCAN_RADIUS = 2, FINE_STEP_DIVIDER = 3,
+              TOP_COARSE_CANDIDATES = 20, MAX_COMBO_CANDIDATES = 8 } = params;
+
+      const winW = Math.max(8, Math.round(imgW * MARKER_SIZE_RATIO));
+      const winH = Math.max(8, Math.round(imgH * MARKER_SIZE_RATIO));
+      const margin = Math.max(4, Math.round(winW * MARGIN_RATIO));
+
+      const gray = new Uint8Array(imgW * imgH);
+      for (let i = 0; i < imgW * imgH; i++) {
+        const p = i * 4;
+        gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
+      }
+
+      const W1 = imgW + 1;
+      const integ = new Int32Array((imgH + 1) * W1);
+      for (let y = 1; y <= imgH; y++) {
+        for (let x = 1; x <= imgW; x++) {
+          integ[y * W1 + x] = gray[(y-1) * imgW + (x-1)]
+            + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
+        }
+      }
+
+      function rectSum(x0, y0, x1, y1) {
+        x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+        x1 = Math.min(imgW, x1); y1 = Math.min(imgH, y1);
+        if (x0 >= x1 || y0 >= y1) return 0;
+        return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
+      }
+
+      function calcContrast(x, y) {
+        if (x + winW > imgW || y + winH > imgH) return -1;
+        const centerS = rectSum(x, y, x + winW, y + winH);
+        const centerAvg = centerS / (winW * winH);
+        const ox0 = Math.max(0, x - margin), oy0 = Math.max(0, y - margin);
+        const ox1 = Math.min(imgW, x + winW + margin), oy1 = Math.min(imgH, y + winH + margin);
+        const outerS = rectSum(ox0, oy0, ox1, oy1);
+        const surroundPixels = (ox1-ox0)*(oy1-oy0) - (winW*winH);
+        if (surroundPixels <= 0) return -1;
+        return (outerS - centerS) / surroundPixels - centerAvg;
+      }
+
+      const coarseStep = Math.max(1, Math.round(winW * COARSE_STEP_MULTIPLIER));
+      const coarseCandidates = [];
+      for (let y = 0; y + winH <= imgH; y += coarseStep) {
+        for (let x = 0; x + winW <= imgW; x += coarseStep) {
+          const contrast = calcContrast(x, y);
+          if (contrast < MIN_CONTRAST) continue;
+          const centerAvg = rectSum(x, y, x + winW, y + winH) / (winW * winH);
+          if (centerAvg > MAX_CENTER_BRIGHTNESS) continue;
+          coarseCandidates.push({ x, y, contrast, centerAvg });
+          coarseCandidates.sort((a, b) => b.contrast - a.contrast);
+          if (coarseCandidates.length > TOP_COARSE_CANDIDATES) coarseCandidates.pop();
+        }
+      }
+      if (coarseCandidates.length === 0) return [];
+
+      const fineRadius = Math.round(winW * FINE_SCAN_RADIUS);
+      const fineStep = Math.max(1, Math.round(winW / FINE_STEP_DIVIDER));
+      const fineCandidates = [];
+      for (const coarse of coarseCandidates) {
+        const sx = Math.max(0, coarse.x - fineRadius);
+        const sy = Math.max(0, coarse.y - fineRadius);
+        const ex2 = Math.min(imgW - winW, coarse.x + fineRadius);
+        const ey2 = Math.min(imgH - winH, coarse.y + fineRadius);
+        for (let y = sy; y <= ey2; y += fineStep) {
+          for (let x = sx; x <= ex2; x += fineStep) {
+            const contrast = calcContrast(x, y);
+            if (contrast < MIN_CONTRAST) continue;
+            const centerAvg = rectSum(x, y, x + winW, y + winH) / (winW * winH);
+            if (centerAvg > MAX_CENTER_BRIGHTNESS) continue;
+            fineCandidates.push({ x, y, contrast, centerAvg });
+          }
+        }
+      }
+      if (fineCandidates.length === 0) return [];
+      fineCandidates.sort((a, b) => b.contrast - a.contrast);
+
+      const deduped = [];
+      for (const cand of fineCandidates) {
+        let tooClose = false;
+        for (const kept of deduped) {
+          const dx = cand.x - kept.x, dy = cand.y - kept.y;
+          if (Math.sqrt(dx*dx + dy*dy) < MIN_CANDIDATE_DISTANCE) { tooClose = true; break; }
+        }
+        if (!tooClose) deduped.push(cand);
+        if (deduped.length >= MAX_COMBO_CANDIDATES) break;
+      }
+
+      const results = [];
+      for (const cand of deduped) {
+        let sx = 0, sy = 0, cnt = 0;
+        for (let y = cand.y; y < Math.min(cand.y + winH, imgH); y++) {
+          for (let x = cand.x; x < Math.min(cand.x + winW, imgW); x++) {
+            if (gray[y * imgW + x] < DARK_THRESH) { sx += x; sy += y; cnt++; }
+          }
+        }
+        if (cnt === 0) continue;
+        const darkRatio = cnt / (winW * winH);
+        if (darkRatio < DARK_PIXEL_RATIO_MIN) continue;
+
+        let borderSum = 0, borderCnt = 0;
+        const bx0 = Math.max(0, cand.x - BORDER_CHECK_DISTANCE);
+        const by0 = Math.max(0, cand.y - BORDER_CHECK_DISTANCE);
+        const bx1 = Math.min(imgW, cand.x + winW + BORDER_CHECK_DISTANCE);
+        const by1 = Math.min(imgH, cand.y + winH + BORDER_CHECK_DISTANCE);
+        for (let y = by0; y < by1; y++) {
+          for (let x = bx0; x < bx1; x++) {
+            if (x < cand.x || x >= cand.x + winW || y < cand.y || y >= cand.y + winH) {
+              borderSum += gray[y * imgW + x]; borderCnt++;
+            }
+          }
+        }
+        if (borderCnt === 0 || borderSum / borderCnt < MIN_BORDER_BRIGHTNESS) continue;
+
+        results.push({
+          x: sx / cnt, y: sy / cnt,
+          contrast: cand.contrast, brightness: cand.centerAvg,
+          darkRatio, borderBrightness: borderSum / borderCnt
+        });
+      }
+      return results;
+    }
+
+    // ── 最良4点セット選択 ─────────────────────────────────────
+    function selectBestMarkerSet(candidates, imgW, imgH, params) {
+      if (candidates.length < 4) return null;
+      const { A4_ASPECT_RATIO = 297/210, A4_ASPECT_TOLERANCE = 0.25,
+              MIN_AREA_RATIO = 0.05, MAX_AREA_RATIO = 0.80,
+              RECT_SCORE_WEIGHT = 0.5, ASPECT_SCORE_WEIGHT = 0.3,
+              AREA_SCORE_WEIGHT = 0.1, CONTRAST_SCORE_WEIGHT = 0.1,
+              MAX_COMBO_CANDIDATES = 8 } = params;
+      const pool = candidates.slice(0, MAX_COMBO_CANDIDATES);
+      const n = pool.length;
+      const imgArea = imgW * imgH;
+
+      function sortCorners(pts) {
+        const byY = [...pts].sort((a, b) => a.y - b.y);
+        const top = byY.slice(0, 2).sort((a, b) => a.x - b.x);
+        const bot = byY.slice(2, 4).sort((a, b) => a.x - b.x);
+        return [top[0], top[1], bot[1], bot[0]];
+      }
+
+      let bestScore = -Infinity, bestSet = null;
+
+      for (let i = 0; i < n - 3; i++) {
+        for (let j = i+1; j < n - 2; j++) {
+          for (let k = j+1; k < n - 1; k++) {
+            for (let l = k+1; l < n; l++) {
+              const pts = [pool[i], pool[j], pool[k], pool[l]];
+              const [tl, tr, br, bl] = sortCorners(pts);
+
+              const d1 = Math.hypot(br.x - tl.x, br.y - tl.y);
+              const d2 = Math.hypot(bl.x - tr.x, bl.y - tr.y);
+              if (d1 === 0 || d2 === 0) continue;
+              const rs = Math.min(d1, d2) / Math.max(d1, d2);
+              if (rs < 0.6) continue;
+
+              const w = (Math.hypot(tr.x-tl.x, tr.y-tl.y) + Math.hypot(br.x-bl.x, br.y-bl.y)) / 2;
+              const h = (Math.hypot(bl.x-tl.x, bl.y-tl.y) + Math.hypot(br.x-tr.x, br.y-tr.y)) / 2;
+              if (w === 0 || h === 0) continue;
+              const aspect = Math.max(w, h) / Math.min(w, h);
+              const as_ = Math.max(0, 1 - Math.abs(aspect - A4_ASPECT_RATIO) / A4_ASPECT_TOLERANCE);
+              if (as_ === 0) continue;
+
+              const area = Math.abs(
+                (tl.x*tr.y - tr.x*tl.y) + (tr.x*br.y - br.x*tr.y) +
+                (br.x*bl.y - bl.x*br.y) + (bl.x*tl.y - tl.x*bl.y)
+              ) / 2;
+              const aRatio = area / imgArea;
+              if (aRatio < MIN_AREA_RATIO || aRatio > MAX_AREA_RATIO) continue;
+              const ars = Math.max(0, 1 - Math.abs(aRatio - 0.35) / 0.30);
+
+              const cs = Math.min(1, pts.reduce((s,p) => s + p.contrast, 0) / (4 * 255));
+
+              const score = rs * RECT_SCORE_WEIGHT + as_ * ASPECT_SCORE_WEIGHT
+                          + ars * AREA_SCORE_WEIGHT + cs * CONTRAST_SCORE_WEIGHT;
+              if (score > bestScore) { bestScore = score; bestSet = [tl, tr, br, bl]; }
+            }
+          }
+        }
+      }
+      return bestSet;
+    }
+
     document.getElementById('analyzeBtn').addEventListener('click', async () => {
       const fileInput = document.getElementById('imageInput');
       const imageFile = capturedBlob || fileInput.files[0];
@@ -773,7 +963,6 @@
       MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO = parseFloat(document.getElementById('paramMarkerSize').value);
       MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
       MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
-      MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
       MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN = parseFloat(document.getElementById('paramDarkPixelRatio').value);
       MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS = parseFloat(document.getElementById('paramMinBorderBrightness').value);
       MARKER_DETECT_PARAMS.BORDER_CHECK_DISTANCE = parseInt(document.getElementById('paramBorderCheckDistance').value);
@@ -797,40 +986,11 @@
         detCvs.height = detH;
         detCvs.getContext('2d').drawImage(hiCvs, 0, 0, detW, detH);
 
-        // マーカー検出
+        // マーカー検出（新方式）
         const imgData = detCvs.getContext('2d').getImageData(0, 0, detW, detH);
-        const rw = Math.round(detW * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
-        const rh = Math.round(detH * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
-        const excludeMargin = Math.round(detW * MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO);
-
-        const allCandidates = [
-          // 左上: 左と上を除外
-          findMarker(imgData, detW, detH, excludeMargin, excludeMargin, rw - excludeMargin, rh - excludeMargin, MARKER_DETECT_PARAMS),
-          // 右上: 右と上を除外
-          findMarker(imgData, detW, detH, detW - rw, excludeMargin, rw - excludeMargin, rh - excludeMargin, MARKER_DETECT_PARAMS),
-          // 左下: 左と下を除外
-          findMarker(imgData, detW, detH, excludeMargin, detH - rh, rw - excludeMargin, rh - excludeMargin, MARKER_DETECT_PARAMS),
-          // 右下: 右と下を除外
-          findMarker(imgData, detW, detH, detW - rw, detH - rh, rw - excludeMargin, rh - excludeMargin, MARKER_DETECT_PARAMS),
-        ];
-
-        // 最初に条件を満たす候補を見つけて採用
-        const ptsLow = [null, null, null, null];
-        const selectedCandidate = [[], [], [], []];  // UI表示用：各隅の全候補
-
-        for (let i = 0; i < 4; i++) {
-          if (allCandidates[i]) {
-            selectedCandidate[i] = allCandidates[i];
-            for (const cand of allCandidates[i]) {
-              const isDarkEnough = cand.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN;
-              const isBorderBright = cand.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS;
-              if (isDarkEnough && isBorderBright) {
-                ptsLow[i] = cand;
-                break;  // 最初に条件を満たすものを採用
-              }
-            }
-          }
-        }
+        const candidates = detectAllMarkerCandidates(imgData, detW, detH, MARKER_DETECT_PARAMS);
+        const bestSet = selectBestMarkerSet(candidates, detW, detH, MARKER_DETECT_PARAMS);
+        const ptsLow = bestSet ? bestSet : [null, null, null, null];
 
         // 修正前キャンバスに描画
         const beforeCanvas = document.getElementById('beforeCanvas');
@@ -839,39 +999,27 @@
         const beforeCtx = beforeCanvas.getContext('2d');
         beforeCtx.drawImage(detCvs, 0, 0);
 
-        // 検出位置を描画
-        beforeCtx.strokeStyle = '#ff0000';
-        beforeCtx.lineWidth = 3;
-        beforeCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-
-        const corners = [
-          // 左上
-          { x: excludeMargin, y: excludeMargin },
-          // 右上: 右側の探索を描画（左端 = detW - rw）
-          { x: detW - rw, y: excludeMargin },
-          // 左下: 下側の探索を描画（上端 = detH - rh）
-          { x: excludeMargin, y: detH - rh },
-          // 右下
-          { x: detW - rw, y: detH - rh }
-        ];
-
-        corners.forEach((corner, idx) => {
-          // 探索範囲を赤色で描画
-          beforeCtx.strokeStyle = '#ff0000';
-          beforeCtx.lineWidth = 3;
-          beforeCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-          beforeCtx.strokeRect(corner.x, corner.y, rw - excludeMargin, rh - excludeMargin);
-          beforeCtx.fillRect(corner.x, corner.y, rw - excludeMargin, rh - excludeMargin);
-
-          // 検出位置をオレンジで描画
-          if (ptsLow[idx]) {
-            beforeCtx.fillStyle = '#ff6600';
-            beforeCtx.fillRect(ptsLow[idx].x - 8, ptsLow[idx].y - 8, 16, 16);
-            beforeCtx.strokeStyle = '#ff6600';
-            beforeCtx.lineWidth = 2;
-            beforeCtx.strokeRect(ptsLow[idx].x - 8, ptsLow[idx].y - 8, 16, 16);
+        // 検出されたマーカーを赤い円と線で描画
+        if (bestSet && bestSet.length === 4) {
+          // 赤い円を描画
+          beforeCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+          for (const pt of bestSet) {
+            beforeCtx.beginPath();
+            beforeCtx.arc(pt.x, pt.y, 10, 0, Math.PI * 2);
+            beforeCtx.fill();
           }
-        });
+
+          // 赤い線で四角形を描画
+          beforeCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+          beforeCtx.lineWidth = 3;
+          beforeCtx.beginPath();
+          beforeCtx.moveTo(bestSet[0].x, bestSet[0].y);
+          for (let i = 1; i < 4; i++) {
+            beforeCtx.lineTo(bestSet[i].x, bestSet[i].y);
+          }
+          beforeCtx.lineTo(bestSet[0].x, bestSet[0].y);
+          beforeCtx.stroke();
+        }
 
         // 修正後：透視変換を実行
         const OUT_W = 800, OUT_H = 1200;  // A4相当のサイズ
@@ -918,25 +1066,25 @@
           });
         }
 
-        // 情報表示（分散した上位3の候補を表示）
-        const cornerNames = ['TL', 'TR', 'BL', 'BR'];
-        let infoHTML = `<strong>検出状況: (✓=採用 ✗=棄却) [距離=${MARKER_DETECT_PARAMS.MIN_CANDIDATE_DISTANCE}px]</strong><br>`;
+        // 情報表示
+        let infoHTML = `<strong>検出結果：</strong><br>`;
+        infoHTML += `候補数: ${candidates.length}<br>`;
 
-        for (let i = 0; i < 4; i++) {
-          infoHTML += `<strong>${cornerNames[i]}:</strong> `;
-          if (selectedCandidate[i].length === 0) {
-            infoHTML += `NOT FOUND<br>`;
-          } else {
-            for (let j = 0; j < selectedCandidate[i].length; j++) {
-              const cand = selectedCandidate[i][j];
-              const isDarkEnough = cand.darkRatio >= MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN;
-              const isBorderBright = cand.borderBrightness >= MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS;
-              const passed = isDarkEnough && isBorderBright;
-              const status = passed ? '✓' : '✗';
-              const reason = !isDarkEnough ? '(暗不足)' : !isBorderBright ? '(枠暗)' : '';
-              infoHTML += `<br>&nbsp;&nbsp;${j+1}. ${status} (${cand.x.toFixed(0)},${cand.y.toFixed(0)}) C=${cand.contrast.toFixed(1)} B=${cand.brightness.toFixed(0)} D=${(cand.darkRatio*100).toFixed(0)}% Br=${cand.borderBrightness.toFixed(0)} ${reason}`;
+        if (bestSet && bestSet.length === 4) {
+          infoHTML += `<strong style="color:#0a0;">✓ 最良4点セット検出成功</strong><br>`;
+          for (let i = 0; i < 4; i++) {
+            const pt = bestSet[i];
+            const cornerNames = ['TL', 'TR', 'BR', 'BL'];
+            infoHTML += `&nbsp;&nbsp;${cornerNames[i]}: (${pt.x.toFixed(0)}, ${pt.y.toFixed(0)}) C=${pt.contrast.toFixed(1)}<br>`;
+          }
+        } else {
+          infoHTML += `<strong style="color:#a00;">✗ 4点セット検出失敗</strong><br>`;
+          if (candidates.length > 0) {
+            infoHTML += `上位候補:<br>`;
+            for (let i = 0; i < Math.min(3, candidates.length); i++) {
+              const cand = candidates[i];
+              infoHTML += `&nbsp;&nbsp;${i+1}. (${cand.x.toFixed(0)}, ${cand.y.toFixed(0)}) C=${cand.contrast.toFixed(1)} D=${(cand.darkRatio*100).toFixed(0)}%<br>`;
             }
-            infoHTML += `<br>`;
           }
         }
 
