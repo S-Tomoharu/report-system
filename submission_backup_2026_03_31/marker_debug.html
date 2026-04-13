@@ -757,6 +757,102 @@
     });
 
     // メイン分析
+    // ── グレースケール + 積分画像の前処理 ─────────────────────
+    function preprocessImage(imgData, imgW, imgH) {
+      const d = imgData.data;
+      const gray = new Uint8Array(imgW * imgH);
+      for (let i = 0; i < imgW * imgH; i++) {
+        const p = i * 4;
+        gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
+      }
+
+      const W1 = imgW + 1;
+      const integ = new Int32Array((imgH + 1) * W1);
+      for (let y = 1; y <= imgH; y++) {
+        for (let x = 1; x <= imgW; x++) {
+          integ[y * W1 + x] = gray[(y-1) * imgW + (x-1)]
+            + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
+        }
+      }
+      return { gray, integ, W1 };
+    }
+
+    // ── 領域内マーカー検出 ────────────────────────────────────
+    function detectCornerCandidates(imgData, imgW, imgH, rx, ry, rw, rh, gray, integ, W1, params) {
+      const { MARKER_SIZE_RATIO, MARGIN_RATIO, MIN_CONTRAST, DARK_THRESH,
+              MAX_CENTER_BRIGHTNESS, DARK_PIXEL_RATIO_MIN, MIN_BORDER_BRIGHTNESS,
+              BORDER_CHECK_DISTANCE } = params;
+
+      const winW = Math.max(8, Math.round(imgW * MARKER_SIZE_RATIO));
+      const winH = Math.max(8, Math.round(imgH * MARKER_SIZE_RATIO));
+      const margin = Math.max(4, Math.round(winW * MARGIN_RATIO));
+
+      function rectSum(x0, y0, x1, y1) {
+        x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+        x1 = Math.min(imgW, x1); y1 = Math.min(imgH, y1);
+        if (x0 >= x1 || y0 >= y1) return 0;
+        return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
+      }
+
+      function calcContrast(x, y) {
+        if (x + winW > imgW || y + winH > imgH) return -1;
+        const centerS = rectSum(x, y, x + winW, y + winH);
+        const centerAvg = centerS / (winW * winH);
+        const ox0 = Math.max(0, x - margin), oy0 = Math.max(0, y - margin);
+        const ox1 = Math.min(imgW, x + winW + margin), oy1 = Math.min(imgH, y + winH + margin);
+        const outerS = rectSum(ox0, oy0, ox1, oy1);
+        const surroundPixels = (ox1-ox0)*(oy1-oy0) - (winW*winH);
+        if (surroundPixels <= 0) return -1;
+        return (outerS - centerS) / surroundPixels - centerAvg;
+      }
+
+      // 領域内をスキャン
+      const candidates = [];
+      for (let y = ry; y + winH <= Math.min(ry + rh, imgH); y++) {
+        for (let x = rx; x + winW <= Math.min(rx + rw, imgW); x++) {
+          const contrast = calcContrast(x, y);
+          if (contrast < MIN_CONTRAST) continue;
+          const centerAvg = rectSum(x, y, x + winW, y + winH) / (winW * winH);
+          if (centerAvg > MAX_CENTER_BRIGHTNESS) continue;
+
+          // 品質フィルタ
+          let sx = 0, sy = 0, cnt = 0;
+          for (let yy = y; yy < Math.min(y + winH, imgH); yy++) {
+            for (let xx = x; xx < Math.min(x + winW, imgW); xx++) {
+              if (gray[yy * imgW + xx] < DARK_THRESH) { sx += xx; sy += yy; cnt++; }
+            }
+          }
+          if (cnt === 0) continue;
+          const darkRatio = cnt / (winW * winH);
+          if (darkRatio < DARK_PIXEL_RATIO_MIN) continue;
+
+          let borderSum = 0, borderCnt = 0;
+          const bx0 = Math.max(0, x - BORDER_CHECK_DISTANCE);
+          const by0 = Math.max(0, y - BORDER_CHECK_DISTANCE);
+          const bx1 = Math.min(imgW, x + winW + BORDER_CHECK_DISTANCE);
+          const by1 = Math.min(imgH, y + winH + BORDER_CHECK_DISTANCE);
+          for (let yy = by0; yy < by1; yy++) {
+            for (let xx = bx0; xx < bx1; xx++) {
+              if (xx < x || xx >= x + winW || yy < y || yy >= y + winH) {
+                borderSum += gray[yy * imgW + xx]; borderCnt++;
+              }
+            }
+          }
+          if (borderCnt === 0 || borderSum / borderCnt < MIN_BORDER_BRIGHTNESS) continue;
+
+          candidates.push({
+            x: sx / cnt, y: sy / cnt,
+            contrast, brightness: centerAvg, darkRatio,
+            borderBrightness: borderSum / borderCnt
+          });
+        }
+      }
+
+      // 対比度でソート
+      candidates.sort((a, b) => b.contrast - a.contrast);
+      return candidates;
+    }
+
     // ── 全体スキャン方式：候補検出 ────────────────────────────
     function detectAllMarkerCandidates(imgData, imgW, imgH, params) {
       const d = imgData.data;
@@ -986,11 +1082,31 @@
         detCvs.height = detH;
         detCvs.getContext('2d').drawImage(hiCvs, 0, 0, detW, detH);
 
-        // マーカー検出（新方式）
+        // マーカー検出（4領域スキャン方式）
         const imgData = detCvs.getContext('2d').getImageData(0, 0, detW, detH);
-        const candidates = detectAllMarkerCandidates(imgData, detW, detH, MARKER_DETECT_PARAMS);
-        const bestSet = selectBestMarkerSet(candidates, detW, detH, MARKER_DETECT_PARAMS);
-        const ptsLow = bestSet ? bestSet : [null, null, null, null];
+        const { gray, integ, W1 } = preprocessImage(imgData, detW, detH);
+
+        // 探索範囲を定義
+        const rangeW = Math.round(detW * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
+        const rangeH = Math.round(detH * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
+
+        const cornerDefs = [
+          { name: 'TL', rx: 0, ry: 0 },
+          { name: 'TR', rx: detW - rangeW, ry: 0 },
+          { name: 'BL', rx: 0, ry: detH - rangeH },
+          { name: 'BR', rx: detW - rangeW, ry: detH - rangeH }
+        ];
+
+        // 各領域から候補を取得 → 各領域から最良 1 点を選ぶ
+        const ptsLow = [];
+        const cornerCandidates = [];
+        for (const corner of cornerDefs) {
+          const cands = detectCornerCandidates(imgData, detW, detH,
+            corner.rx, corner.ry, rangeW, rangeH,
+            gray, integ, W1, MARKER_DETECT_PARAMS);
+          cornerCandidates.push(cands);
+          ptsLow.push(cands.length > 0 ? cands[0] : null);
+        }
 
         // 修正前キャンバスに描画
         const beforeCanvas = document.getElementById('beforeCanvas');
@@ -1000,24 +1116,26 @@
         beforeCtx.drawImage(detCvs, 0, 0);
 
         // 検出されたマーカーを赤い円と線で描画
-        if (bestSet && bestSet.length === 4) {
+        // ptsLow = [TL, TR, BL, BR]
+        const allFound = ptsLow.every(p => p !== null);
+        if (allFound) {
           // 赤い円を描画
           beforeCtx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-          for (const pt of bestSet) {
+          for (const pt of ptsLow) {
             beforeCtx.beginPath();
             beforeCtx.arc(pt.x, pt.y, 10, 0, Math.PI * 2);
             beforeCtx.fill();
           }
 
-          // 赤い線で四角形を描画
+          // 赤い線で四角形を描画（TL → TR → BR → BL → TL）
           beforeCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
           beforeCtx.lineWidth = 3;
           beforeCtx.beginPath();
-          beforeCtx.moveTo(bestSet[0].x, bestSet[0].y);
-          for (let i = 1; i < 4; i++) {
-            beforeCtx.lineTo(bestSet[i].x, bestSet[i].y);
-          }
-          beforeCtx.lineTo(bestSet[0].x, bestSet[0].y);
+          beforeCtx.moveTo(ptsLow[0].x, ptsLow[0].y);  // TL
+          beforeCtx.lineTo(ptsLow[1].x, ptsLow[1].y);  // TR
+          beforeCtx.lineTo(ptsLow[3].x, ptsLow[3].y);  // BR
+          beforeCtx.lineTo(ptsLow[2].x, ptsLow[2].y);  // BL
+          beforeCtx.lineTo(ptsLow[0].x, ptsLow[0].y);  // TL
           beforeCtx.stroke();
         }
 
@@ -1066,26 +1184,26 @@
           });
         }
 
-        // 情報表示
-        let infoHTML = `<strong>検出結果：</strong><br>`;
-        infoHTML += `候補数: ${candidates.length}<br>`;
+        // 情報表示（4領域方式）
+        let infoHTML = `<strong>4領域スキャン検出結果：</strong><br>`;
+        const cornerNames = ['TL', 'TR', 'BL', 'BR'];
 
-        if (bestSet && bestSet.length === 4) {
-          infoHTML += `<strong style="color:#0a0;">✓ 最良4点セット検出成功</strong><br>`;
-          for (let i = 0; i < 4; i++) {
-            const pt = bestSet[i];
-            const cornerNames = ['TL', 'TR', 'BR', 'BL'];
-            infoHTML += `&nbsp;&nbsp;${cornerNames[i]}: (${pt.x.toFixed(0)}, ${pt.y.toFixed(0)}) C=${pt.contrast.toFixed(1)}<br>`;
+        for (let i = 0; i < 4; i++) {
+          if (ptsLow[i]) {
+            const pt = ptsLow[i];
+            infoHTML += `${cornerNames[i]}: ✓ (${pt.x.toFixed(0)}, ${pt.y.toFixed(0)}) C=${pt.contrast.toFixed(1)}<br>`;
+          } else {
+            infoHTML += `${cornerNames[i]}: ✗ 検出失敗<br>`;
           }
+          if (cornerCandidates[i].length > 0) {
+            infoHTML += `&nbsp;&nbsp;候補数: ${cornerCandidates[i].length}<br>`;
+          }
+        }
+
+        if (allFound) {
+          infoHTML += `<br><strong style="color:#0a0;">✓ 全隅検出成功</strong>`;
         } else {
-          infoHTML += `<strong style="color:#a00;">✗ 4点セット検出失敗</strong><br>`;
-          if (candidates.length > 0) {
-            infoHTML += `上位候補:<br>`;
-            for (let i = 0; i < Math.min(3, candidates.length); i++) {
-              const cand = candidates[i];
-              infoHTML += `&nbsp;&nbsp;${i+1}. (${cand.x.toFixed(0)}, ${cand.y.toFixed(0)}) C=${cand.contrast.toFixed(1)} D=${(cand.darkRatio*100).toFixed(0)}%<br>`;
-            }
-          }
+          infoHTML += `<br><strong style="color:#a00;">✗ 一部検出失敗</strong>`;
         }
 
         infoHTML += `<br><strong>画像解像度:</strong><br>`;
