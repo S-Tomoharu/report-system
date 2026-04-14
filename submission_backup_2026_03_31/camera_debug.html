@@ -770,6 +770,9 @@
         0, 0, detectCanvas.width, detectCanvas.height
       );
 
+      // 常に最新のパラメータを取得（最初に）
+      const params = (window.opener && window.opener.MARKER_DETECT_PARAMS) || MARKER_DETECT_PARAMS;
+
       // A4 フレーム四隅の画面座標を取得
       const frameRect = a4Frame.getBoundingClientRect();
       const frameTL = { x: frameRect.left, y: frameRect.top };
@@ -799,8 +802,8 @@
 
       // 4 領域を定義（黄色い枠と同じ）
       const videoScale = video.videoWidth / DETECT_WIDTH;
-      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
-      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
+      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * params.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
+      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * params.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
 
       // 黄色い枠の４隅（画面座標）
       const searches = [
@@ -834,7 +837,6 @@
 
       // 4 領域スキャン
       const detectedPts = [];
-      const params = (window.opener && window.opener.MARKER_DETECT_PARAMS) || MARKER_DETECT_PARAMS;
 
       for (let i = 0; i < cornerDefs.length; i++) {
         const corner = cornerDefs[i];
