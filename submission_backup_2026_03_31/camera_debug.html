@@ -147,7 +147,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260414-001';
+    const VERSION = '20260414-002';
 
     const video = document.getElementById('video');
     const a4Frame = document.getElementById('a4Frame');
@@ -841,14 +841,15 @@
       const detFrameBL = screenToDetect(frameBL);
       const detFrameBR = screenToDetect(frameBR);
 
-      // 4 領域を定義（黄色い枠と同じ）
-      const videoScale = video.videoWidth / DETECT_WIDTH;
-      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
-      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
+      // 4 領域を定義（A4フレームの画面座標から黄色い枠サイズを計算）
+      const frameWidth = frameRect.right - frameRect.left;
+      const frameHeight = frameRect.bottom - frameRect.top;
+      const screenRangeW = Math.round(frameWidth * MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO);
+      const screenRangeH = Math.round(frameHeight * MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO);
 
       // DEBUG: 黄色い枠のサイズを確認
       if (frameCount % 30 === 0) {
-        console.log(`黄色い枠 - W: ${screenRangeW}, H: ${screenRangeH}, DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`);
+        console.log(`黄色い枠 [画面座標] - W: ${screenRangeW}, H: ${screenRangeH}, CAMERA_DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO}`);
       }
 
       // 黄色い枠の４隅（画面座標）
@@ -870,8 +871,10 @@
       });
 
       // rangeW, rangeH は detectCanvas 座標での範囲サイズ
-      const rangeW = Math.round(screenRangeW * videoScale / offset.scaleX);
-      const rangeH = Math.round(screenRangeH * videoScale / offset.scaleY);
+      // 変換: 画面座標 × offset.scaleX → ビデオ座標 × detScale → detectCanvas座標
+      const detScale = DETECT_WIDTH / video.videoWidth;
+      const rangeW = Math.round(screenRangeW * offset.scaleX * detScale);
+      const rangeH = Math.round(screenRangeH * offset.scaleY * detScale);
 
       console.log(`cornerDefs: rangeW=${rangeW}, rangeH=${rangeH}`);
       for (const corner of cornerDefs) {
