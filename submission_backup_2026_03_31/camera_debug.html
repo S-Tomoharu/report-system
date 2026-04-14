@@ -797,16 +797,32 @@
       const detFrameBL = screenToDetect(frameBL);
       const detFrameBR = screenToDetect(frameBR);
 
-      // 4 領域を定義（A4 フレーム周辺）
-      const rangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
-      const rangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
+      // 4 領域を定義（黄色い枠と同じ）
+      const videoScale = video.videoWidth / DETECT_WIDTH;
+      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
+      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
 
-      const cornerDefs = [
-        { name: 'TL', rx: Math.round(detFrameTL.x - rangeW/2), ry: Math.round(detFrameTL.y - rangeH/2) },
-        { name: 'TR', rx: Math.round(detFrameTR.x - rangeW/2), ry: Math.round(detFrameTR.y - rangeH/2) },
-        { name: 'BL', rx: Math.round(detFrameBL.x - rangeW/2), ry: Math.round(detFrameBL.y - rangeH/2) },
-        { name: 'BR', rx: Math.round(detFrameBR.x - rangeW/2), ry: Math.round(detFrameBR.y - rangeH/2) }
+      // 黄色い枠の４隅（画面座標）
+      const searches = [
+        { name: 'TL', x: frameRect.left, y: frameRect.top },
+        { name: 'TR', x: frameRect.right - screenRangeW, y: frameRect.top },
+        { name: 'BL', x: frameRect.left, y: frameRect.bottom - screenRangeH },
+        { name: 'BR', x: frameRect.right - screenRangeW, y: frameRect.bottom - screenRangeH }
       ];
+
+      // 黄色い枠の４隅を detectCanvas 座標に変換
+      const cornerDefs = searches.map(s => {
+        const detPt = screenToDetect({ x: s.x, y: s.y });
+        return {
+          name: s.name,
+          rx: Math.round(detPt.x),
+          ry: Math.round(detPt.y)
+        };
+      });
+
+      // rangeW, rangeH は detectCanvas 座標での範囲サイズ
+      const rangeW = Math.round(screenRangeW * videoScale / offset.scaleX);
+      const rangeH = Math.round(screenRangeH * videoScale / offset.scaleY);
 
       console.log(`cornerDefs: rangeW=${rangeW}, rangeH=${rangeH}`);
       for (const corner of cornerDefs) {
@@ -840,7 +856,7 @@
 
       if (detectedPts.length === 4) {
         drawDetectionMarkers(detectedPts);
-        drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH, frameRect);  // デバッグ表示
+        drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, frameRect);  // デバッグ表示
         detectCount++;
         console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
