@@ -164,9 +164,25 @@
       font-weight: bold;
     }
     .param-table tr:nth-child(even) { background: #fafafa; }
+
+    #versionBadge {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #333;
+      color: #0f0;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      border: 1px solid #0f0;
+      z-index: 100;
+    }
   </style>
 </head>
 <body>
+  <div id="versionBadge">v20260414-006</div>
+
   <div class="container">
     <h1>🔍 マーカー検出デバッグツール</h1>
 
@@ -392,7 +408,10 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260414-006';
+    const VERSION = '20260414-007';
+
+    // バージョン badge を更新
+    document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     // パラメータ設定（camera_debug からアクセス可能にするため window.MARKER_DETECT_PARAMS で定義）
     window.MARKER_DETECT_PARAMS = {
