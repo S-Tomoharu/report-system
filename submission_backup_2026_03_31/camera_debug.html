@@ -172,14 +172,26 @@
     };
 
     // camera_debug が marker_debug から開かれた場合、marker_debug のパラメータで上書き
+    let debugMsg = '';
     if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
       MARKER_DETECT_PARAMS = { ...MARKER_DETECT_PARAMS, ...window.opener.MARKER_DETECT_PARAMS };
-      console.log('✅ marker_debug のパラメータを継承しました');
-      console.log(`  DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`);
+      debugMsg = `✅ パラメータ継承\nDETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`;
+      console.log(debugMsg);
     } else {
-      console.log('❌ marker_debug から開かれていない、またはパラメータが見つかりません');
-      console.log(`  window.opener: ${window.opener}`);
+      debugMsg = `❌ パラメータなし\nwindow.opener: ${!!window.opener}`;
+      console.log(debugMsg);
     }
+
+    // デバッグ情報をページに表示
+    const debugPanel = document.createElement('div');
+    debugPanel.id = 'debugPanel';
+    debugPanel.style.cssText = `
+      position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8);
+      color: #0f0; font-family: monospace; font-size: 10px; padding: 8px;
+      max-width: 200px; z-index: 9999; white-space: pre-wrap; word-break: break-all;
+    `;
+    debugPanel.textContent = debugMsg;
+    document.body.appendChild(debugPanel);
 
     function findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params) {
       const d = imgData.data;
