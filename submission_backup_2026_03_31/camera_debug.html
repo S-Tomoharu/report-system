@@ -189,16 +189,19 @@
       console.log(debugMsg);
     }
 
-    // デバッグ情報をページに表示
-    const debugPanel = document.createElement('div');
-    debugPanel.id = 'debugPanel';
-    debugPanel.style.cssText = `
-      position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8);
-      color: #0f0; font-family: monospace; font-size: 10px; padding: 8px;
-      max-width: 200px; z-index: 9999; white-space: pre-wrap; word-break: break-all;
-    `;
-    debugPanel.textContent = debugMsg;
-    document.body.appendChild(debugPanel);
+    // デバッグ情報をページに表示（画面左上）
+    if (debugMsg) {
+      const debugPanel = document.createElement('div');
+      debugPanel.id = 'debugPanel';
+      debugPanel.style.cssText = `
+        position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8);
+        color: #0f0; font-family: monospace; font-size: 10px; padding: 8px;
+        max-width: 200px; z-index: 9999; white-space: pre-wrap; word-break: break-all;
+      `;
+      debugPanel.textContent = debugMsg;
+      document.body.appendChild(debugPanel);
+      console.log(debugMsg);
+    }
 
     function findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params) {
       const d = imgData.data;
