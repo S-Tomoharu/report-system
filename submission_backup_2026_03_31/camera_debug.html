@@ -829,12 +829,15 @@
       const detFrameBL = screenToDetect(frameBL);
       const detFrameBR = screenToDetect(frameBR);
 
-      // 4 領域を定義（A4フレーム幅に対する比率）
-      // screenRangeW/H: A4フレーム本体の画面座標での寸法に比率を適用
-      const frameWidth = frameRect.right - frameRect.left;
-      const frameHeight = frameRect.bottom - frameRect.top;
-      const screenRangeW = Math.round(frameWidth * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
-      const screenRangeH = Math.round(frameHeight * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
+      // 4 領域を定義（黄色い枠と同じ）
+      const videoScale = video.videoWidth / DETECT_WIDTH;
+      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
+      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
+
+      // DEBUG: 黄色い枠のサイズを確認
+      if (frameCount % 30 === 0) {
+        console.log(`黄色い枠 - W: ${screenRangeW}, H: ${screenRangeH}, DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`);
+      }
 
       // 黄色い枠の４隅（画面座標）
       const searches = [
@@ -855,14 +858,12 @@
       });
 
       // rangeW, rangeH は detectCanvas 座標での範囲サイズ
-      // 画面座標 → ビデオ座標 → detectCanvas座標
-      const detScale = DETECT_WIDTH / video.videoWidth;
-      const rangeW = Math.round(screenRangeW * detScale / offset.scaleX);
-      const rangeH = Math.round(screenRangeH * detScale / offset.scaleY);
+      const rangeW = Math.round(screenRangeW * videoScale / offset.scaleX);
+      const rangeH = Math.round(screenRangeH * videoScale / offset.scaleY);
 
-      // DEBUG
-      if (frameCount % 30 === 0) {
-        console.log(`Range [detectCanvas]: ${rangeW}x${rangeH}, DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`);
+      console.log(`cornerDefs: rangeW=${rangeW}, rangeH=${rangeH}`);
+      for (const corner of cornerDefs) {
+        console.log(`  ${corner.name}: rx=${corner.rx}, ry=${corner.ry}`);
       }
 
       // プリプロセス（1 回のみ）
@@ -879,9 +880,15 @@
         if (cands.length > 0) {
           const pt = cands[0];
           detectedPts.push(pt);
+          console.log(`${corner.name}: 検出 (${pt.x.toFixed(0)}, ${pt.y.toFixed(0)}) C=${pt.contrast.toFixed(1)}`);
+          console.log(`  範囲: x[${corner.rx}-${corner.rx + rangeW}], y[${corner.ry}-${corner.ry + rangeH}]`);
+          console.log(`  フレーム座標: TL(${detFrameTL.x.toFixed(0)},${detFrameTL.y.toFixed(0)}) ~ BR(${detFrameBR.x.toFixed(0)},${detFrameBR.y.toFixed(0)})`);
+        } else {
+          console.log(`${corner.name}: 検出失敗`);
         }
       }
 
+      console.log(`検出数: ${detectedPts.length}/4`);
 
       // 常にデバッグ表示（検出失敗時も黄色い枠を見せる）
       drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, frameRect);
@@ -889,9 +896,7 @@
       if (detectedPts.length === 4) {
         drawDetectionMarkers(detectedPts);
         detectCount++;
-        if (frameCount % 10 === 0) {
-          console.log(`検出: ${detectCount}/${DETECT_THRESHOLD}`);
-        }
+        console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
         if (detectCount >= DETECT_THRESHOLD) {
           console.log('自動撮影実行！');
