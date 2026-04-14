@@ -693,23 +693,21 @@
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
       ctx.lineWidth = 3;
 
-      // 4 隅ごとに黄色い枠を描画
-      const cornerScreens = [
+      // 4 隅ごとに黄色い枠を描画（緑のドット = 黄色い枠のコーナー）
+      const searches = [
         { name: 'TL', x: frameRect.left, y: frameRect.top },
-        { name: 'TR', x: frameRect.right, y: frameRect.top },
-        { name: 'BL', x: frameRect.left, y: frameRect.bottom },
-        { name: 'BR', x: frameRect.right, y: frameRect.bottom }
+        { name: 'TR', x: frameRect.right - screenRangeW, y: frameRect.top },
+        { name: 'BL', x: frameRect.left, y: frameRect.bottom - screenRangeH },
+        { name: 'BR', x: frameRect.right - screenRangeW, y: frameRect.bottom - screenRangeH }
       ];
 
-      for (const corner of cornerScreens) {
-        const x = corner.x - screenRangeW / 2;
-        const y = corner.y - screenRangeH / 2;
-        ctx.strokeRect(x, y, screenRangeW, screenRangeH);
+      for (const search of searches) {
+        ctx.strokeRect(search.x, search.y, screenRangeW, screenRangeH);
 
         // コーナー名を表示
         ctx.fillStyle = 'rgba(255, 255, 0, 1)';
         ctx.font = 'bold 12px Arial';
-        ctx.fillText(corner.name, x + 5, y + 15);
+        ctx.fillText(search.name, search.x + 5, search.y + 15);
       }
 
       console.log(`screenRangeW=${screenRangeW.toFixed(0)}, screenRangeH=${screenRangeH.toFixed(0)}`);
