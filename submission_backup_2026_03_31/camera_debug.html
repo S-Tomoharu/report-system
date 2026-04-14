@@ -147,7 +147,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260414-002';
+    const VERSION = '20260414-003';
 
     const video = document.getElementById('video');
     const a4Frame = document.getElementById('a4Frame');
@@ -872,7 +872,6 @@
 
       // rangeW, rangeH は detectCanvas 座標での範囲サイズ
       // 変換: 画面座標 × offset.scaleX → ビデオ座標 × detScale → detectCanvas座標
-      const detScale = DETECT_WIDTH / video.videoWidth;
       const rangeW = Math.round(screenRangeW * offset.scaleX * detScale);
       const rangeH = Math.round(screenRangeH * offset.scaleY * detScale);
 
