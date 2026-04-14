@@ -709,12 +709,19 @@
       const detectedPts = [];
       const params = (window.opener && window.opener.MARKER_DETECT_PARAMS) || MARKER_DETECT_PARAMS;
 
-      for (const corner of cornerDefs) {
+      for (let i = 0; i < cornerDefs.length; i++) {
+        const corner = cornerDefs[i];
         const cands = detectCornerCandidates(imgData, detectCanvas.width, detectCanvas.height,
           corner.rx, corner.ry, rangeW, rangeH,
           gray, integ, W1, params);
         if (cands.length > 0) {
-          detectedPts.push(cands[0]);
+          const pt = cands[0];
+          detectedPts.push(pt);
+          console.log(`${corner.name}: 検出 (${pt.x.toFixed(0)}, ${pt.y.toFixed(0)}) C=${pt.contrast.toFixed(1)}`);
+          console.log(`  範囲: x[${corner.rx}-${corner.rx + rangeW}], y[${corner.ry}-${corner.ry + rangeH}]`);
+          console.log(`  フレーム座標: TL(${detFrameTL.x.toFixed(0)},${detFrameTL.y.toFixed(0)}) ~ BR(${detFrameBR.x.toFixed(0)},${detFrameBR.y.toFixed(0)})`);
+        } else {
+          console.log(`${corner.name}: 検出失敗`);
         }
       }
 
