@@ -107,6 +107,21 @@
       display: none;
       z-index: 100;
     }
+
+    #debugInfo {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 4px;
+      z-index: 50;
+      max-width: 200px;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -128,6 +143,7 @@
   </div>
 
   <div id="error"></div>
+  <div id="debugInfo"></div>
 
   <script>
     const video = document.getElementById('video');
@@ -176,13 +192,18 @@
 
     // camera_debug が marker_debug から開かれた場合、marker_debug のパラメータで上書き
     let debugMsg = '';
+    const debugInfo = document.getElementById('debugInfo');
     if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
       MARKER_DETECT_PARAMS = { ...MARKER_DETECT_PARAMS, ...window.opener.MARKER_DETECT_PARAMS };
       window.MARKER_DETECT_PARAMS = MARKER_DETECT_PARAMS;
-      debugMsg = `✅ パラメータ継承\nDETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`;
+      debugMsg = `✅ パラメータ継承済み\nCAMERA_DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO}`;
+      debugInfo.textContent = debugMsg;
+      debugInfo.style.color = '#0f0';
       console.log(debugMsg);
     } else {
-      debugMsg = `❌ パラメータなし\nwindow.opener: ${!!window.opener}`;
+      debugMsg = `❌ パラメータ未継承\nwindow.opener: ${!!window.opener}`;
+      debugInfo.textContent = debugMsg;
+      debugInfo.style.color = '#f00';
       if (window.opener) {
         debugMsg += `\nopener URL: ${window.opener.location?.href || 'unknown'}\n`;
         debugMsg += `opener.MARKER_DETECT_PARAMS: ${!!window.opener.MARKER_DETECT_PARAMS}\n`;
@@ -190,9 +211,6 @@
       }
       console.log(debugMsg);
     }
-
-    // デバッグ情報はコンソールのみ出力（Mac Safari DevTools で確認）
-    console.log(debugMsg);
 
     function findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params) {
       const d = imgData.data;
