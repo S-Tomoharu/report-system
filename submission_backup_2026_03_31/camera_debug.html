@@ -143,7 +143,7 @@
     }
 
     // ── 自動シャッター機能 ────────────────────────────────────
-    const MARKER_DETECT_PARAMS = {
+    let MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.03,
       MARGIN_RATIO: 0.5,
       MIN_CONTRAST: 15,
@@ -170,6 +170,12 @@
       AREA_SCORE_WEIGHT: 0.1,
       CONTRAST_SCORE_WEIGHT: 0.1,
     };
+
+    // camera_debug が marker_debug から開かれた場合、marker_debug のパラメータで上書き
+    if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
+      MARKER_DETECT_PARAMS = { ...MARKER_DETECT_PARAMS, ...window.opener.MARKER_DETECT_PARAMS };
+      console.log('✅ marker_debug のパラメータを継承しました');
+    }
 
     function findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params) {
       const d = imgData.data;
@@ -770,9 +776,6 @@
         0, 0, detectCanvas.width, detectCanvas.height
       );
 
-      // 常に最新のパラメータを取得（最初に）
-      const params = (window.opener && window.opener.MARKER_DETECT_PARAMS) || MARKER_DETECT_PARAMS;
-
       // A4 フレーム四隅の画面座標を取得
       const frameRect = a4Frame.getBoundingClientRect();
       const frameTL = { x: frameRect.left, y: frameRect.top };
@@ -802,8 +805,8 @@
 
       // 4 領域を定義（黄色い枠と同じ）
       const videoScale = video.videoWidth / DETECT_WIDTH;
-      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * params.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
-      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * params.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
+      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
+      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
 
       // 黄色い枠の４隅（画面座標）
       const searches = [
@@ -842,7 +845,7 @@
         const corner = cornerDefs[i];
         const cands = detectCornerCandidates(imgData, detectCanvas.width, detectCanvas.height,
           corner.rx, corner.ry, rangeW, rangeH,
-          gray, integ, W1, params);
+          gray, integ, W1, MARKER_DETECT_PARAMS);
         if (cands.length > 0) {
           const pt = cands[0];
           detectedPts.push(pt);
