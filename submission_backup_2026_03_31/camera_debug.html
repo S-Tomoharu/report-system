@@ -648,6 +648,56 @@
       overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     }
 
+    function drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH) {
+      overlayCanvas.width = video.clientWidth;
+      overlayCanvas.height = video.clientHeight;
+      const ctx = overlayCanvas.getContext('2d');
+
+      // detectCanvas 座標 → video 座標への変換
+      const videoScale = video.videoWidth / DETECT_WIDTH;
+      const offset = getCoverOffset(video);
+
+      function detectToScreen(detPt) {
+        const videoPt = {
+          x: detPt.x * videoScale,
+          y: detPt.y * videoScale
+        };
+        return {
+          x: videoPt.x / offset.scaleX + offset.offsetX,
+          y: videoPt.y / offset.scaleY + offset.offsetY
+        };
+      }
+
+      // 探索範囲を黄色い枠で描画
+      ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
+      ctx.lineWidth = 2;
+      for (const corner of cornerDefs) {
+        const topLeft = detectToScreen({ x: corner.rx, y: corner.ry });
+        const width = rangeW * videoScale / offset.scaleX;
+        const height = rangeH * videoScale / offset.scaleY;
+        ctx.strokeRect(topLeft.x, topLeft.y, width, height);
+
+        // コーナー名を表示
+        ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+        ctx.font = '12px Arial';
+        ctx.fillText(corner.name, topLeft.x + 5, topLeft.y + 15);
+      }
+
+      // 検出点を赤い四角で描画＋座標表示
+      for (let i = 0; i < detectedPts.length; i++) {
+        const screenPt = detectToScreen(detectedPts[i]);
+
+        // 赤い四角
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.fillRect(screenPt.x - 8, screenPt.y - 8, 16, 16);
+
+        // 座標テキスト
+        ctx.fillStyle = 'rgba(255, 0, 0, 1)';
+        ctx.font = 'bold 11px Arial';
+        ctx.fillText(`(${detectedPts[i].x.toFixed(0)},${detectedPts[i].y.toFixed(0)})`, screenPt.x + 12, screenPt.y + 5);
+      }
+    }
+
     function autoShutterLoop() {
       animId = requestAnimationFrame(autoShutterLoop);
       if (!video.srcObject || !autoShutterEnabled) return;
@@ -729,6 +779,7 @@
 
       if (detectedPts.length === 4) {
         drawDetectionMarkers(detectedPts);
+        drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH);  // デバッグ表示
         detectCount++;
         console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
