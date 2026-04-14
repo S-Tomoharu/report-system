@@ -147,7 +147,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260414-004';
+    const VERSION = '20260414-005';
 
     const video = document.getElementById('video');
     const a4Frame = document.getElementById('a4Frame');
@@ -690,8 +690,8 @@
       overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     }
 
-    function drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH, frameRect) {
-      console.log(`drawDebugOverlay called: ${detectedPts.length} points, rangeW=${rangeW}, rangeH=${rangeH}`);
+    function drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect) {
+      console.log(`drawDebugOverlay called: ${detectedPts.length} points, screenRangeW=${screenRangeW}, screenRangeH=${screenRangeH}`);
       overlayCanvas.width = video.clientWidth;
       overlayCanvas.height = video.clientHeight;
       const ctx = overlayCanvas.getContext('2d');
@@ -729,8 +729,7 @@
       console.log(`A4 Frame (green dots): TL(${frameRect.left},${frameRect.top}) BR(${frameRect.right},${frameRect.bottom})`);
 
       // frameRect（緑のドット）を基準に、画面座標で探索範囲を黄色い枠で描画
-      const screenRangeW = rangeW * videoScale / offset.scaleX;
-      const screenRangeH = rangeH * videoScale / offset.scaleY;
+      // screenRangeW/H は autoShutterLoop から既に渡されているので再計算不要
 
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
       ctx.lineWidth = 3;
@@ -903,7 +902,7 @@
       console.log(`検出数: ${detectedPts.length}/4`);
 
       // 常にデバッグ表示（検出失敗時も黄色い枠を見せる）
-      drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, frameRect);
+      drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect);
 
       if (detectedPts.length === 4) {
         drawDetectionMarkers(detectedPts);
