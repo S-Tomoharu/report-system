@@ -487,12 +487,17 @@
       }
 
       const candidates = [];
+      const contrastFailCount = { count: 0 };
+      const brightnessFailCount = { count: 0 };
+      const darkRatioFailCount = { count: 0 };
+      const borderFailCount = { count: 0 };
+
       for (let y = ry; y + winH <= Math.min(ry + rh, imgH); y++) {
         for (let x = rx; x + winW <= Math.min(rx + rw, imgW); x++) {
           const contrast = calcContrast(x, y);
-          if (contrast < MIN_CONTRAST) continue;
+          if (contrast < MIN_CONTRAST) { contrastFailCount.count++; continue; }
           const centerAvg = rectSum(x, y, x + winW, y + winH) / (winW * winH);
-          if (centerAvg > MAX_CENTER_BRIGHTNESS) continue;
+          if (centerAvg > MAX_CENTER_BRIGHTNESS) { brightnessFailCount.count++; continue; }
 
           let sx = 0, sy = 0, cnt = 0;
           for (let yy = y; yy < Math.min(y + winH, imgH); yy++) {
@@ -502,7 +507,7 @@
           }
           if (cnt === 0) continue;
           const darkRatio = cnt / (winW * winH);
-          if (darkRatio < DARK_PIXEL_RATIO_MIN) continue;
+          if (darkRatio < DARK_PIXEL_RATIO_MIN) { darkRatioFailCount.count++; continue; }
 
           let borderSum = 0, borderCnt = 0;
           const bx0 = Math.max(0, x - BORDER_CHECK_DISTANCE);
@@ -516,7 +521,7 @@
               }
             }
           }
-          if (borderCnt === 0 || borderSum / borderCnt < MIN_BORDER_BRIGHTNESS) continue;
+          if (borderCnt === 0 || borderSum / borderCnt < MIN_BORDER_BRIGHTNESS) { borderFailCount.count++; continue; }
 
           candidates.push({
             x: sx / cnt, y: sy / cnt,
@@ -527,6 +532,13 @@
       }
 
       candidates.sort((a, b) => b.contrast - a.contrast);
+
+      // DEBUG: ログ出力
+      const scanPixels = (Math.min(ry + rh, imgH) - ry) * (Math.min(rx + rw, imgW) - rx);
+      console.log(`  Scan region: [${rx},${ry}] size=${rw}x${rh}, winSize=${winW}x${winH}`);
+      console.log(`  Filter stats - scanPixels=${scanPixels}, contrast_fail=${contrastFailCount.count}, brightness_fail=${brightnessFailCount.count}, darkRatio_fail=${darkRatioFailCount.count}, border_fail=${borderFailCount.count}`);
+      console.log(`  Found ${candidates.length} candidates`);
+
       return candidates;
     }
 
@@ -687,22 +699,20 @@
       console.log(`A4 Frame (green dots): TL(${frameRect.left},${frameRect.top}) BR(${frameRect.right},${frameRect.bottom})`);
 
       // frameRect（緑のドット）を基準に、画面座標で探索範囲を黄色い枠で描画
-      const screenRangeW = rangeW * videoScale / offset.scaleX;
-      const screenRangeH = rangeH * videoScale / offset.scaleY;
-
+      // rangeW, rangeH はすでに画面座標で渡されている
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
       ctx.lineWidth = 3;
 
       // 4 隅ごとに黄色い枠を描画（緑のドット = 黄色い枠のコーナー）
       const searches = [
         { name: 'TL', x: frameRect.left, y: frameRect.top },
-        { name: 'TR', x: frameRect.right - screenRangeW, y: frameRect.top },
-        { name: 'BL', x: frameRect.left, y: frameRect.bottom - screenRangeH },
-        { name: 'BR', x: frameRect.right - screenRangeW, y: frameRect.bottom - screenRangeH }
+        { name: 'TR', x: frameRect.right - rangeW, y: frameRect.top },
+        { name: 'BL', x: frameRect.left, y: frameRect.bottom - rangeH },
+        { name: 'BR', x: frameRect.right - rangeW, y: frameRect.bottom - rangeH }
       ];
 
       for (const search of searches) {
-        ctx.strokeRect(search.x, search.y, screenRangeW, screenRangeH);
+        ctx.strokeRect(search.x, search.y, rangeW, rangeH);
 
         // コーナー名を表示
         ctx.fillStyle = 'rgba(255, 255, 0, 1)';
@@ -754,6 +764,16 @@
       ctx.fillText(`Range: (${screenRangeW.toFixed(0)}x${screenRangeH.toFixed(0)})`, debugX, debugY);
     }
 
+    // marker_debug のパラメータを毎回取得
+    function getParams() {
+      if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
+        console.log('Using window.opener.MARKER_DETECT_PARAMS');
+        return window.opener.MARKER_DETECT_PARAMS;
+      }
+      console.log('Using local MARKER_DETECT_PARAMS');
+      return MARKER_DETECT_PARAMS;
+    }
+
     function autoShutterLoop() {
       animId = requestAnimationFrame(autoShutterLoop);
       if (!video.srcObject || !autoShutterEnabled) return;
@@ -769,6 +789,9 @@
       const imgData = detectCanvas.getContext('2d').getImageData(
         0, 0, detectCanvas.width, detectCanvas.height
       );
+
+      // 常に最新のパラメータを取得
+      const params = getParams();
 
       // A4 フレーム四隅の画面座標を取得
       const frameRect = a4Frame.getBoundingClientRect();
@@ -799,8 +822,13 @@
 
       // 4 領域を定義（黄色い枠と同じ）
       const videoScale = video.videoWidth / DETECT_WIDTH;
-      const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
-      const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
+      const detScale = DETECT_WIDTH / video.videoWidth;
+
+      // screenRangeW/H: A4 フレーム本体の寸法 × DETECTION_RANGE_RATIO （画面座標）
+      const frameWidth = frameRect.right - frameRect.left;
+      const frameHeight = frameRect.bottom - frameRect.top;
+      const screenRangeW = Math.round(frameWidth * params.DETECTION_RANGE_RATIO);
+      const screenRangeH = Math.round(frameHeight * params.DETECTION_RANGE_RATIO);
 
       // 黄色い枠の４隅（画面座標）
       const searches = [
@@ -821,8 +849,9 @@
       });
 
       // rangeW, rangeH は detectCanvas 座標での範囲サイズ
-      const rangeW = Math.round(screenRangeW * videoScale / offset.scaleX);
-      const rangeH = Math.round(screenRangeH * videoScale / offset.scaleY);
+      // 画面座標 → ビデオ座標 → 検出キャンバス座標
+      const rangeW = Math.round(screenRangeW * offset.scaleX * detScale);
+      const rangeH = Math.round(screenRangeH * offset.scaleY * detScale);
 
       console.log(`cornerDefs: rangeW=${rangeW}, rangeH=${rangeH}`);
       for (const corner of cornerDefs) {
@@ -834,7 +863,6 @@
 
       // 4 領域スキャン
       const detectedPts = [];
-      const params = (window.opener && window.opener.MARKER_DETECT_PARAMS) || MARKER_DETECT_PARAMS;
 
       for (let i = 0; i < cornerDefs.length; i++) {
         const corner = cornerDefs[i];
