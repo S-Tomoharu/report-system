@@ -704,6 +704,33 @@
         ctx.font = 'bold 11px Arial';
         ctx.fillText(`(${detectedPts[i].x.toFixed(0)},${detectedPts[i].y.toFixed(0)})`, screenPt.x + 12, screenPt.y + 5);
       }
+
+      // 画面左上に debug 情報を表示
+      const debugX = 10;
+      let debugY = 60;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.fillRect(debugX - 5, 45, 300, 200);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+      ctx.font = '10px monospace';
+
+      ctx.fillText(`Range: W=${rangeW.toFixed(0)} H=${rangeH.toFixed(0)}`, debugX, debugY);
+      debugY += 15;
+      ctx.fillText(`Detected: ${detectedPts.length}/4`, debugX, debugY);
+      debugY += 15;
+
+      for (let i = 0; i < cornerDefs.length; i++) {
+        const corner = cornerDefs[i];
+        const pt = detectedPts[i] || { x: '?', y: '?' };
+        const ptStr = detectedPts[i] ? `(${detectedPts[i].x.toFixed(0)},${detectedPts[i].y.toFixed(0)})` : 'NONE';
+        ctx.fillText(`${corner.name}: ${ptStr}`, debugX, debugY);
+        debugY += 12;
+      }
+
+      debugY += 5;
+      ctx.fillText(`Frame: TL(${detFrameTL.x.toFixed(0)},${detFrameTL.y.toFixed(0)})`, debugX, debugY);
+      debugY += 12;
+      ctx.fillText(`BR(${detFrameBR.x.toFixed(0)},${detFrameBR.y.toFixed(0)})`, debugX, debugY);
     }
 
     function autoShutterLoop() {
