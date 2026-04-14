@@ -179,6 +179,11 @@
       console.log(debugMsg);
     } else {
       debugMsg = `❌ パラメータなし\nwindow.opener: ${!!window.opener}`;
+      if (window.opener) {
+        debugMsg += `\nopener URL: ${window.opener.location?.href || 'unknown'}\n`;
+        debugMsg += `opener.MARKER_DETECT_PARAMS: ${!!window.opener.MARKER_DETECT_PARAMS}\n`;
+        debugMsg += `openerのキー: ${Object.keys(window.opener).slice(0, 5).join(', ')}...`;
+      }
       console.log(debugMsg);
     }
 
