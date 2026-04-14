@@ -649,9 +649,11 @@
     }
 
     function drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH) {
+      console.log(`drawDebugOverlay called: ${detectedPts.length} points, rangeW=${rangeW}, rangeH=${rangeH}`);
       overlayCanvas.width = video.clientWidth;
       overlayCanvas.height = video.clientHeight;
       const ctx = overlayCanvas.getContext('2d');
+      console.log(`overlayCanvas: ${overlayCanvas.width}x${overlayCanvas.height}`);
 
       // detectCanvas 座標 → video 座標への変換
       const videoScale = video.videoWidth / DETECT_WIDTH;
@@ -668,18 +670,24 @@
         };
       }
 
+      // テスト：画面左上に赤い四角（overlayCanvas 動作確認用）
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+      ctx.fillRect(10, 10, 30, 30);
+      console.log('Test red square drawn');
+
       // 探索範囲を黄色い枠で描画
-      ctx.strokeStyle = 'rgba(255, 255, 0, 0.6)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
+      ctx.lineWidth = 3;
       for (const corner of cornerDefs) {
         const topLeft = detectToScreen({ x: corner.rx, y: corner.ry });
         const width = rangeW * videoScale / offset.scaleX;
         const height = rangeH * videoScale / offset.scaleY;
+        console.log(`${corner.name}: topLeft=(${topLeft.x.toFixed(0)}, ${topLeft.y.toFixed(0)}), size=(${width.toFixed(0)}, ${height.toFixed(0)})`);
         ctx.strokeRect(topLeft.x, topLeft.y, width, height);
 
         // コーナー名を表示
         ctx.fillStyle = 'rgba(255, 255, 0, 1)';
-        ctx.font = '12px Arial';
+        ctx.font = 'bold 14px Arial';
         ctx.fillText(corner.name, topLeft.x + 5, topLeft.y + 15);
       }
 
@@ -751,6 +759,11 @@
         { name: 'BL', rx: Math.round(detFrameBL.x - rangeW/2), ry: Math.round(detFrameBL.y - rangeH/2) },
         { name: 'BR', rx: Math.round(detFrameBR.x - rangeW/2), ry: Math.round(detFrameBR.y - rangeH/2) }
       ];
+
+      console.log(`cornerDefs: rangeW=${rangeW}, rangeH=${rangeH}`);
+      for (const corner of cornerDefs) {
+        console.log(`  ${corner.name}: rx=${corner.rx}, ry=${corner.ry}`);
+      }
 
       // プリプロセス（1 回のみ）
       const { gray, integ, W1 } = preprocessImage(imgData, detectCanvas.width, detectCanvas.height);
