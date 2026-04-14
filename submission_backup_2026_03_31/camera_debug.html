@@ -175,6 +175,10 @@
     if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
       MARKER_DETECT_PARAMS = { ...MARKER_DETECT_PARAMS, ...window.opener.MARKER_DETECT_PARAMS };
       console.log('✅ marker_debug のパラメータを継承しました');
+      console.log(`  DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`);
+    } else {
+      console.log('❌ marker_debug から開かれていない、またはパラメータが見つかりません');
+      console.log(`  window.opener: ${window.opener}`);
     }
 
     function findMarker(imgData, imgW, imgH, rx, ry, rw, rh, params) {
@@ -807,6 +811,11 @@
       const videoScale = video.videoWidth / DETECT_WIDTH;
       const screenRangeW = Math.round(Math.abs(detFrameTR.x - detFrameTL.x) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleX);
       const screenRangeH = Math.round(Math.abs(detFrameBL.y - detFrameTL.y) * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO * videoScale / offset.scaleY);
+
+      // DEBUG: 黄色い枠のサイズを確認
+      if (frameCount % 30 === 0) {
+        console.log(`黄色い枠 - W: ${screenRangeW}, H: ${screenRangeH}, DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO}`);
+      }
 
       // 黄色い枠の４隅（画面座標）
       const searches = [
