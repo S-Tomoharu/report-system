@@ -925,10 +925,14 @@
             height: { ideal: 6000 }
           }
         });
-        video.srcObject = stream;
+
+        // loadedmetadata リスナーを先に設定
         video.addEventListener('loadedmetadata', () => {
           autoShutterLoop();
         }, { once: true });
+
+        video.srcObject = stream;
+        await video.play();
       } catch (err) {
         showError('カメラを起動できませんでした。ブラウザの設定でアクセスを許可してください。');
         console.error(err);
