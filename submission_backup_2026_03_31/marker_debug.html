@@ -391,6 +391,9 @@
   </div>
 
   <script>
+    // バージョン管理（キャッシュ回避）
+    const VERSION = '20260414-001';
+
     // パラメータ設定（camera_debug からアクセス可能にするため window.MARKER_DETECT_PARAMS で定義）
     window.MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.03,
@@ -733,7 +736,7 @@
       const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
 
       cameraWindow = window.open(
-        'camera_debug.html',
+        `camera_debug.html?v=${VERSION}`,
         'cameraDebug',
         `width=${w},height=${h},left=${left},top=${top},resizable=yes`
       );
