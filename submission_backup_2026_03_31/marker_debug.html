@@ -387,8 +387,8 @@
   </div>
 
   <script>
-    // パラメータ設定
-    const MARKER_DETECT_PARAMS = {
+    // パラメータ設定（camera_debug からアクセス可能にするため window.MARKER_DETECT_PARAMS で定義）
+    window.MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.03,
       MARGIN_RATIO: 0.5,
       MIN_CONTRAST: 15,
@@ -401,6 +401,7 @@
       BORDER_CHECK_DISTANCE: 3,      // 輪郭から外側何ピクセルでチェックするか
       MIN_CANDIDATE_DISTANCE: 50,    // 候補同士の最小距離（ピクセル）
     };
+    const MARKER_DETECT_PARAMS = window.MARKER_DETECT_PARAMS;
 
     const OMR = {
       idMarkers: [
