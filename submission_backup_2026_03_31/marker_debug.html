@@ -342,7 +342,7 @@
           <td>DETECTION_RANGE_RATIO</td>
           <td>0.2</td>
           <td>0.1～1</td>
-          <td>各隅からの探索範囲（画像サイズの何%まで）</td>
+          <td>各隅からの探索範囲（A4フレーム幅/高の何%まで）</td>
         </tr>
         <tr>
           <td>DARK_PIXEL_RATIO_MIN</td>
@@ -395,7 +395,7 @@
       DARK_THRESH: 140,
       EXCLUDE_MARGIN_RATIO: 0.03,
       MAX_CENTER_BRIGHTNESS: 120,   // 中央の最大輝度（これ以下が黒い）
-      DETECTION_RANGE_RATIO: 0.2,   // 各隅からの探索範囲（0.2 = 画像の20%まで）
+      DETECTION_RANGE_RATIO: 0.2,   // 各隅からの探索範囲（A4フレーム幅/高の何%まで）
       DARK_PIXEL_RATIO_MIN: 0.6,    // マーカー内の暗ピクセル比率の最小値（0.6 = 60%以上）
       MIN_BORDER_BRIGHTNESS: 10,    // 枠が「白い」と判定する最小輝度
       BORDER_CHECK_DISTANCE: 3,      // 輪郭から外側何ピクセルでチェックするか
@@ -1100,7 +1100,7 @@
         const imgData = detCvs.getContext('2d').getImageData(0, 0, detW, detH);
         const { gray, integ, W1 } = preprocessImage(imgData, detW, detH);
 
-        // 探索範囲を定義
+        // 探索範囲を定義（A4フレーム幅に対する比率）
         const rangeW = Math.round(detW * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
         const rangeH = Math.round(detH * MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO);
 
