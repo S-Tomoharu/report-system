@@ -648,7 +648,7 @@
       overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     }
 
-    function drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH) {
+    function drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH, frameRect) {
       console.log(`drawDebugOverlay called: ${detectedPts.length} points, rangeW=${rangeW}, rangeH=${rangeH}`);
       overlayCanvas.width = video.clientWidth;
       overlayCanvas.height = video.clientHeight;
@@ -670,10 +670,21 @@
         };
       }
 
-      // テスト：画面左上に赤い四角（overlayCanvas 動作確認用）
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-      ctx.fillRect(10, 10, 30, 30);
-      console.log('Test red square drawn');
+      // A4 フレーム四隅を 緑色のドット で描画（確認用）
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+      ctx.beginPath();
+      ctx.arc(frameRect.left, frameRect.top, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(frameRect.right, frameRect.top, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(frameRect.left, frameRect.bottom, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(frameRect.right, frameRect.bottom, 5, 0, Math.PI * 2);
+      ctx.fill();
+      console.log(`A4 Frame (green dots): TL(${frameRect.left},${frameRect.top}) BR(${frameRect.right},${frameRect.bottom})`);
 
       // 探索範囲を黄色い枠で描画
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
@@ -819,7 +830,7 @@
 
       if (detectedPts.length === 4) {
         drawDetectionMarkers(detectedPts);
-        drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH);  // デバッグ表示
+        drawDebugOverlay(detectedPts, cornerDefs, rangeW, rangeH, frameRect);  // デバッグ表示
         detectCount++;
         console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
