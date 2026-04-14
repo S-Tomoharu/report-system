@@ -686,21 +686,33 @@
       ctx.fill();
       console.log(`A4 Frame (green dots): TL(${frameRect.left},${frameRect.top}) BR(${frameRect.right},${frameRect.bottom})`);
 
-      // 探索範囲を黄色い枠で描画
+      // frameRect（緑のドット）を基準に、画面座標で探索範囲を黄色い枠で描画
+      const screenRangeW = rangeW * videoScale / offset.scaleX;
+      const screenRangeH = rangeH * videoScale / offset.scaleY;
+
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
       ctx.lineWidth = 3;
-      for (const corner of cornerDefs) {
-        const topLeft = detectToScreen({ x: corner.rx, y: corner.ry });
-        const width = rangeW * videoScale / offset.scaleX;
-        const height = rangeH * videoScale / offset.scaleY;
-        console.log(`${corner.name}: topLeft=(${topLeft.x.toFixed(0)}, ${topLeft.y.toFixed(0)}), size=(${width.toFixed(0)}, ${height.toFixed(0)})`);
-        ctx.strokeRect(topLeft.x, topLeft.y, width, height);
+
+      // 4 隅ごとに黄色い枠を描画
+      const cornerScreens = [
+        { name: 'TL', x: frameRect.left, y: frameRect.top },
+        { name: 'TR', x: frameRect.right, y: frameRect.top },
+        { name: 'BL', x: frameRect.left, y: frameRect.bottom },
+        { name: 'BR', x: frameRect.right, y: frameRect.bottom }
+      ];
+
+      for (const corner of cornerScreens) {
+        const x = corner.x - screenRangeW / 2;
+        const y = corner.y - screenRangeH / 2;
+        ctx.strokeRect(x, y, screenRangeW, screenRangeH);
 
         // コーナー名を表示
         ctx.fillStyle = 'rgba(255, 255, 0, 1)';
-        ctx.font = 'bold 14px Arial';
-        ctx.fillText(corner.name, topLeft.x + 5, topLeft.y + 15);
+        ctx.font = 'bold 12px Arial';
+        ctx.fillText(corner.name, x + 5, y + 15);
       }
+
+      console.log(`screenRangeW=${screenRangeW.toFixed(0)}, screenRangeH=${screenRangeH.toFixed(0)}`);
 
       // 検出点を赤い四角で描画＋座標表示
       for (let i = 0; i < detectedPts.length; i++) {
@@ -739,9 +751,9 @@
       }
 
       debugY += 5;
-      ctx.fillText(`Frame: TL(${detFrameTL.x.toFixed(0)},${detFrameTL.y.toFixed(0)})`, debugX, debugY);
+      ctx.fillText(`Frame: (${frameRect.width.toFixed(0)}x${frameRect.height.toFixed(0)})`, debugX, debugY);
       debugY += 12;
-      ctx.fillText(`BR(${detFrameBR.x.toFixed(0)},${detFrameBR.y.toFixed(0)})`, debugX, debugY);
+      ctx.fillText(`Range: (${screenRangeW.toFixed(0)}x${screenRangeH.toFixed(0)})`, debugX, debugY);
     }
 
     function autoShutterLoop() {
