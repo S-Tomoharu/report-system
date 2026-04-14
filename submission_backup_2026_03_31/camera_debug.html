@@ -854,9 +854,11 @@
 
       console.log(`検出数: ${detectedPts.length}/4`);
 
+      // 常にデバッグ表示（検出失敗時も黄色い枠を見せる）
+      drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, frameRect);
+
       if (detectedPts.length === 4) {
         drawDetectionMarkers(detectedPts);
-        drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, frameRect);  // デバッグ表示
         detectCount++;
         console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
@@ -871,7 +873,6 @@
           captureBtn.click();
         }
       } else {
-        clearDetectionOverlay();
         if (detectCount > 0) {
           console.log(`検出失敗 - カウント ${detectCount} をリセット`);
         }
