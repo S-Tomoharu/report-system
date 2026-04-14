@@ -207,6 +207,10 @@
           <input type="number" id="paramDetectionRange" value="0.2" step="0.05" min="0.1" max="1">
         </div>
         <div class="param-group">
+          <label>📱 カメラ用探索範囲比率 (CAMERA_DETECTION_RANGE_RATIO)</label>
+          <input type="number" id="paramCameraDetectionRange" value="0.2" step="0.05" min="0.1" max="1">
+        </div>
+        <div class="param-group">
           <label>暗ピクセル最小比率 (DARK_PIXEL_RATIO_MIN)</label>
           <input type="number" id="paramDarkPixelRatio" value="0.6" step="0.05" min="0" max="1">
         </div>
@@ -716,6 +720,7 @@
       MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
       MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
       MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
+      MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramCameraDetectionRange').value);
       MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN = parseFloat(document.getElementById('paramDarkPixelRatio').value);
       MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS = parseFloat(document.getElementById('paramMinBorderBrightness').value);
       MARKER_DETECT_PARAMS.BORDER_CHECK_DISTANCE = parseInt(document.getElementById('paramBorderCheckDistance').value);
@@ -1073,6 +1078,7 @@
       MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
       MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
       MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
+      MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramCameraDetectionRange').value);
       MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN = parseFloat(document.getElementById('paramDarkPixelRatio').value);
       MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS = parseFloat(document.getElementById('paramMinBorderBrightness').value);
       MARKER_DETECT_PARAMS.BORDER_CHECK_DISTANCE = parseInt(document.getElementById('paramBorderCheckDistance').value);
