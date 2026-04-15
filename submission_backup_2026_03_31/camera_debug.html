@@ -739,18 +739,27 @@
       ctx.lineWidth = 3;
 
       // BR だけに絞る（検証用・ノイズ削減）
-      const tl_x = frameRect.right - screenRangeW;
-      const tl_y = frameRect.bottom - screenRangeH;
-      const br_x = tl_x + screenRangeW;
-      const br_y = tl_y + screenRangeH;
-      ctx.strokeRect(tl_x, tl_y, screenRangeW, screenRangeH);
+      const yf_tl_x = frameRect.right - screenRangeW;
+      const yf_tl_y = frameRect.bottom - screenRangeH;
+      const yf_tr_x = frameRect.right;
+      const yf_tr_y = frameRect.bottom - screenRangeH;
+      const yf_bl_x = frameRect.right - screenRangeW;
+      const yf_bl_y = frameRect.bottom;
+      const yf_br_x = frameRect.right;
+      const yf_br_y = frameRect.bottom;
+
+      ctx.strokeRect(yf_tl_x, yf_tl_y, screenRangeW, screenRangeH);
       ctx.fillStyle = 'rgba(255, 255, 0, 1)';
       ctx.font = 'bold 12px Arial';
-      ctx.fillText('BR', tl_x + 5, tl_y + 15);
-      // 黄色い枠の四隅座標を表示
-      ctx.font = '10px monospace';
-      ctx.fillText(`TL(${tl_x.toFixed(0)},${tl_y.toFixed(0)})`, tl_x, tl_y - 3);
-      ctx.fillText(`BR(${br_x.toFixed(0)},${br_y.toFixed(0)})`, br_x - 80, br_y + 15);
+      ctx.fillText('BR', yf_tl_x + 5, yf_tl_y + 15);
+
+      // 黄色い枠の四隅座標を表示（YF=YellowFrame）
+      ctx.font = '9px monospace';
+      ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+      ctx.fillText(`YF-TL(${yf_tl_x.toFixed(0)},${yf_tl_y.toFixed(0)})`, yf_tl_x, yf_tl_y - 5);
+      ctx.fillText(`YF-TR(${yf_tr_x.toFixed(0)},${yf_tr_y.toFixed(0)})`, yf_tr_x - 90, yf_tr_y - 5);
+      ctx.fillText(`YF-BL(${yf_bl_x.toFixed(0)},${yf_bl_y.toFixed(0)})`, yf_bl_x, yf_bl_y + 12);
+      ctx.fillText(`YF-BR(${yf_br_x.toFixed(0)},${yf_br_y.toFixed(0)})`, yf_br_x - 90, yf_br_y + 12);
 
       console.log(`screenRangeW=${screenRangeW.toFixed(0)}, screenRangeH=${screenRangeH.toFixed(0)}`);
 
