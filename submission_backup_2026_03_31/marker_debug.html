@@ -409,7 +409,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260415-017';
+    const VERSION = '20260415-018';
 
     // バージョン badge を更新
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
@@ -417,7 +417,7 @@
     // パラメータ設定（camera_debug からアクセス可能にするため window.MARKER_DETECT_PARAMS で定義）
     window.MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.03,
-      MARGIN_RATIO: 0.5,
+      MARGIN_RATIO: 0.2,
       MIN_CONTRAST: 15,
       DARK_THRESH: 140,
       EXCLUDE_MARGIN_RATIO: 0.03,
