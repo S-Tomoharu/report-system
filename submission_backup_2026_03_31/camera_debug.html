@@ -517,6 +517,10 @@
       let contrastFailed = 0, brightnessFailed = 0, darkFailed = 0, borderFailed = 0;
       let maxContrastValue = -Infinity;
 
+      console.log(`  BR: winW=${winW}, winH=${winH}`);
+      console.log(`  BR: ry=${ry}, rh=${rh}, ry+winH=${ry+winH}, Math.min(ry+rh, imgH)=${Math.min(ry+rh, imgH)}`);
+      console.log(`  BR: ループ実行条件: ${ry + winH} <= ${Math.min(ry + rh, imgH)} = ${ry + winH <= Math.min(ry + rh, imgH)}`);
+
       for (let y = ry; y + winH <= Math.min(ry + rh, imgH); y++) {
         for (let x = rx; x + winW <= Math.min(rx + rw, imgW); x++) {
           const contrast = calcContrast(x, y);
