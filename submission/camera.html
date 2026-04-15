@@ -40,19 +40,6 @@
       transition: border-color 0.2s ease;
     }
 
-    .corner {
-      position: absolute;
-      width: 30px;
-      height: 30px;
-      background: rgba(255, 255, 255, 0.8);
-      border: 2px solid white;
-      border-radius: 2px;
-    }
-
-    .corner-tl { top: 2%; left: 2%; }
-    .corner-tr { top: 2%; right: 2%; }
-    .corner-bl { bottom: 2%; left: 2%; }
-    .corner-br { bottom: 2%; right: 2%; }
 
     #controls {
       position: fixed;
@@ -113,12 +100,7 @@
   <video id="video" autoplay playsinline></video>
 
   <div id="overlay">
-    <div id="a4Frame">
-      <div class="corner corner-tl"></div>
-      <div class="corner corner-tr"></div>
-      <div class="corner corner-bl"></div>
-      <div class="corner corner-br"></div>
-    </div>
+    <div id="a4Frame"></div>
   </div>
 
   <div id="controls">
