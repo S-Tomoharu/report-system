@@ -515,10 +515,12 @@
 
       const candidates = [];
       let contrastFailed = 0, brightnessFailed = 0, darkFailed = 0, borderFailed = 0;
+      let maxContrastValue = -Infinity;
 
       for (let y = ry; y + winH <= Math.min(ry + rh, imgH); y++) {
         for (let x = rx; x + winW <= Math.min(rx + rw, imgW); x++) {
           const contrast = calcContrast(x, y);
+          maxContrastValue = Math.max(maxContrastValue, contrast);
           if (contrast < MIN_CONTRAST) { contrastFailed++; continue; }
           const centerAvg = rectSum(x, y, x + winW, y + winH) / (winW * winH);
           if (centerAvg > MAX_CENTER_BRIGHTNESS) { brightnessFailed++; continue; }
@@ -557,7 +559,8 @@
 
       candidates.sort((a, b) => b.contrast - a.contrast);
 
-      // デバッグ出力：どのフィルタで落とされたか
+      // デバッグ出力：最高コントラスト値とフィルタ結果
+      console.log(`  BR: 最高Contrast=${maxContrastValue.toFixed(1)} / MIN_CONTRAST=${MIN_CONTRAST}`);
       if (contrastFailed > 0 || brightnessFailed > 0 || darkFailed > 0 || borderFailed > 0) {
         console.log(`  フィルタ結果: Contrast落${contrastFailed} Bright落${brightnessFailed} Dark落${darkFailed} Border落${borderFailed} → 候補${candidates.length}個`);
       }
