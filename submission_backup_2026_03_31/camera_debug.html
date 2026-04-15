@@ -725,18 +725,13 @@
       ctx.strokeStyle = 'rgba(255, 255, 0, 0.8)';
       ctx.lineWidth = 3;
 
-      // 4 隅ごとに黄色い枠を描画
-      for (let i = 0; i < 4; i++) {
-        const tl_x = (i === 0 || i === 2) ? frameRect.left : frameRect.right - screenRangeW;
-        const tl_y = (i === 0 || i === 1) ? frameRect.top : frameRect.bottom - screenRangeH;
-        ctx.strokeRect(tl_x, tl_y, screenRangeW, screenRangeH);
-
-        // コーナー名を表示
-        ctx.fillStyle = 'rgba(255, 255, 0, 1)';
-        ctx.font = 'bold 12px Arial';
-        const names = ['TL', 'TR', 'BL', 'BR'];
-        ctx.fillText(names[i], tl_x + 5, tl_y + 15);
-      }
+      // BR だけに絞る（検証用・ノイズ削減）
+      const tl_x = frameRect.right - screenRangeW;
+      const tl_y = frameRect.bottom - screenRangeH;
+      ctx.strokeRect(tl_x, tl_y, screenRangeW, screenRangeH);
+      ctx.fillStyle = 'rgba(255, 255, 0, 1)';
+      ctx.font = 'bold 12px Arial';
+      ctx.fillText('BR', tl_x + 5, tl_y + 15);
 
       console.log(`screenRangeW=${screenRangeW.toFixed(0)}, screenRangeH=${screenRangeH.toFixed(0)}`);
 
@@ -765,7 +760,7 @@
 
       ctx.fillText(`Range: W=${rangeW.toFixed(0)} H=${rangeH.toFixed(0)}`, debugX, debugY);
       debugY += 15;
-      ctx.fillText(`Detected: ${detectedPts.length}/4`, debugX, debugY);
+      ctx.fillText(`Detected: ${detectedPts.length}/${cornerDefs.length}`, debugX, debugY);
       debugY += 15;
 
       for (let i = 0; i < cornerDefs.length; i++) {
@@ -836,11 +831,8 @@
         console.log(`黄色い枠 [画面座標] - W: ${screenRangeW}, H: ${screenRangeH}, CAMERA_DETECTION_RANGE_RATIO: ${MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO}`);
       }
 
-      // 黄色い枠の４隅（画面座標）
+      // 黄色い枠：検証用に BR だけに絞る（ノイズ削減）
       const searches = [
-        { name: 'TL', x: frameRect.left, y: frameRect.top },
-        { name: 'TR', x: frameRect.right - screenRangeW, y: frameRect.top },
-        { name: 'BL', x: frameRect.left, y: frameRect.bottom - screenRangeH },
         { name: 'BR', x: frameRect.right - screenRangeW, y: frameRect.bottom - screenRangeH }
       ];
 
@@ -889,12 +881,12 @@
         }
       }
 
-      console.log(`検出数: ${detectedPts.length}/4`);
+      console.log(`検出数: ${detectedPts.length}/${cornerDefs.length}`);
 
       // 常にデバッグ表示（検出失敗時も黄色い枠を見せる）
       drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect);
 
-      if (detectedPts.length === 4) {
+      if (detectedPts.length === cornerDefs.length) {
         drawDetectionMarkers(detectedPts);
         detectCount++;
         console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
