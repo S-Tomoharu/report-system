@@ -627,7 +627,12 @@
     const detectCanvas = document.createElement('canvas');
     const DETECT_WIDTH = 1280;
     const overlayCanvas = document.getElementById('detectionOverlay');
-    let autoShutterEnabled = true;
+
+    // URL query parameter を読む（debug=true で自動撮影を無効化）
+    const urlParams = new URLSearchParams(window.location.search);
+    const debugMode = urlParams.get('debug') === 'true';
+    let autoShutterEnabled = !debugMode;
+
     let frameCount = 0;
     let detectCount = 0;
     const DETECT_INTERVAL = 3;    // 短い時間用に 6 → 3
@@ -1069,6 +1074,8 @@
         return;
       }
 
+      const fileName = `debug_screen_${Date.now()}.png`;
+
       // video + overlayCanvas を合成
       const saveCanvas = document.createElement('canvas');
       saveCanvas.width = video.clientWidth;
@@ -1087,10 +1094,10 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `debug_screen_${Date.now()}.png`;
+        a.download = fileName;
         a.click();
         URL.revokeObjectURL(url);
-        showError('✅ 画面を保存しました');
+        alert(`✅ 保存完了\n\nファイル名: ${fileName}\n\n保存先:\niPhone の場合は「ファイル」アプリの「ダウンロード」フォルダを確認してください`);
       }, 'image/png');
     });
 

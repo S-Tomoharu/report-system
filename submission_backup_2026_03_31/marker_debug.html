@@ -195,6 +195,7 @@
       <div class="file-input-group">
         <label>📱 カメラで撮影:</label>
         <button type="button" id="cameraBtn" style="width:100%; padding:10px; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px;">📷 カメラを起動</button>
+        <button type="button" id="debugCameraBtn" style="width:100%; padding:10px; background:#f59e0b; color:white; border:none; border-radius:6px; cursor:pointer; font-size:14px; margin-top:5px;">🐛 デバッグモード（自動撮影無効）</button>
       </div>
 
       <div class="params">
@@ -756,6 +757,44 @@
 
       cameraWindow = window.open(
         `camera_debug.html?v=${VERSION}`,
+        'cameraDebug',
+        `width=${w},height=${h},left=${left},top=${top},resizable=yes`
+      );
+
+      if (!cameraWindow) {
+        alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+      }
+    });
+
+    // デバッグモード：自動撮影無効でカメラを起動
+    const debugCameraBtn = document.getElementById('debugCameraBtn');
+    debugCameraBtn.addEventListener('click', () => {
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.focus();
+        return;
+      }
+
+      // UI からパラメータを読み込む
+      MARKER_DETECT_PARAMS.MIN_CONTRAST = parseFloat(document.getElementById('paramMinContrast').value);
+      MARKER_DETECT_PARAMS.MARGIN_RATIO = parseFloat(document.getElementById('paramMarginRatio').value);
+      MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO = parseFloat(document.getElementById('paramMarkerSize').value);
+      MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
+      MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
+      MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
+      MARKER_DETECT_PARAMS.CAMERA_DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramCameraDetectionRange').value);
+      MARKER_DETECT_PARAMS.DARK_PIXEL_RATIO_MIN = parseFloat(document.getElementById('paramDarkPixelRatio').value);
+      MARKER_DETECT_PARAMS.MIN_BORDER_BRIGHTNESS = parseFloat(document.getElementById('paramMinBorderBrightness').value);
+      MARKER_DETECT_PARAMS.BORDER_CHECK_DISTANCE = parseInt(document.getElementById('paramBorderCheckDistance').value);
+      MARKER_DETECT_PARAMS.MIN_CANDIDATE_DISTANCE = parseInt(document.getElementById('paramMinCandidateDistance').value);
+
+      const w = 480;
+      const h = 780;
+      const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+      const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+
+      // debug=true を付けて camera_debug を開く（自動撮影が無効になる）
+      cameraWindow = window.open(
+        `camera_debug.html?v=${VERSION}&debug=true`,
         'cameraDebug',
         `width=${w},height=${h},left=${left},top=${top},resizable=yes`
       );
