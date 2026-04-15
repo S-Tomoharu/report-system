@@ -756,12 +756,13 @@
       // 黄色い枠の四隅座標を表示（YF=YellowFrame）
       ctx.font = '9px monospace';
       ctx.fillStyle = 'rgba(255, 255, 0, 1)';
-      ctx.fillText(`YF-TL(${yf_tl_x.toFixed(0)},${yf_tl_y.toFixed(0)})`, yf_tl_x, yf_tl_y - 5);
-      ctx.fillText(`YF-TR(${yf_tr_x.toFixed(0)},${yf_tr_y.toFixed(0)})`, yf_tr_x - 90, yf_tr_y - 5);
-      ctx.fillText(`YF-BL(${yf_bl_x.toFixed(0)},${yf_bl_y.toFixed(0)})`, yf_bl_x, yf_bl_y + 12);
-      ctx.fillText(`YF-BR(${yf_br_x.toFixed(0)},${yf_br_y.toFixed(0)})`, yf_br_x - 90, yf_br_y + 12);
+      // 各座標を枠の内側に配置してずれを防ぐ
+      ctx.fillText(`YF-TL(${yf_tl_x.toFixed(0)},${yf_tl_y.toFixed(0)})`, yf_tl_x + 5, yf_tl_y + 15);
+      ctx.fillText(`YF-TR(${yf_tr_x.toFixed(0)},${yf_tr_y.toFixed(0)})`, yf_tr_x - 100, yf_tr_y + 15);
+      ctx.fillText(`YF-BL(${yf_bl_x.toFixed(0)},${yf_bl_y.toFixed(0)})`, yf_bl_x + 5, yf_bl_y - 5);
+      ctx.fillText(`YF-BR(${yf_br_x.toFixed(0)},${yf_br_y.toFixed(0)})`, yf_br_x - 100, yf_br_y - 5);
 
-      console.log(`screenRangeW=${screenRangeW.toFixed(0)}, screenRangeH=${screenRangeH.toFixed(0)}`);
+      console.log(`黄色い枠座標: TL(${yf_tl_x.toFixed(0)},${yf_tl_y.toFixed(0)}) TR(${yf_tr_x.toFixed(0)},${yf_tr_y.toFixed(0)}) BL(${yf_bl_x.toFixed(0)},${yf_bl_y.toFixed(0)}) BR(${yf_br_x.toFixed(0)},${yf_br_y.toFixed(0)})`);
 
       // 検出点を赤い四角で描画＋座標表示
       for (let i = 0; i < detectedPts.length; i++) {
