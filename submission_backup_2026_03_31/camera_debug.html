@@ -757,7 +757,7 @@
       ctx.font = '9px monospace';
       ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
       const yf_box_x = 10;
-      const yf_box_y = overlayCanvas.height - 80;  // ボタンの上
+      const yf_box_y = overlayCanvas.height - 150;  // ボタンより上
       ctx.fillRect(yf_box_x, yf_box_y, 200, 30);
       ctx.fillStyle = 'rgba(0, 0, 0, 1)';
       ctx.fillText(`YF: TL(${yf_tl_x.toFixed(0)},${yf_tl_y.toFixed(0)}) BR(${yf_br_x.toFixed(0)},${yf_br_y.toFixed(0)})`, yf_box_x + 5, yf_box_y + 15);
