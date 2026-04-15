@@ -121,6 +121,7 @@
 
   <div id="controls">
     <button id="captureBtn">📸 撮影する</button>
+    <button id="debugSaveBtn">🖼️ 画面保存</button>
     <button id="closeBtn">閉じる</button>
   </div>
 
@@ -1059,6 +1060,38 @@
 
         reader.readAsArrayBuffer(blob);
       }, 'image/jpeg', 0.95);
+    });
+
+    // デバッグ用：赤い四角が見えている状態を画像保存
+    document.getElementById('debugSaveBtn').addEventListener('click', () => {
+      if (!video.srcObject) {
+        showError('カメラがまだ起動していません。');
+        return;
+      }
+
+      // video + overlayCanvas を合成
+      const saveCanvas = document.createElement('canvas');
+      saveCanvas.width = video.clientWidth;
+      saveCanvas.height = video.clientHeight;
+      const ctx = saveCanvas.getContext('2d');
+
+      // video を描画
+      ctx.drawImage(video, 0, 0, saveCanvas.width, saveCanvas.height);
+
+      // overlayCanvas（赤い四角）を重ねる
+      const overlayCanvas = document.getElementById('detectionOverlay');
+      ctx.drawImage(overlayCanvas, 0, 0);
+
+      // PNG として保存
+      saveCanvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `debug_screen_${Date.now()}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showError('✅ 画面を保存しました');
+      }, 'image/png');
     });
 
     // marker_debug からの確認メッセージを受け取ったら window を閉じる
