@@ -772,10 +772,10 @@
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
         ctx.fillRect(screenPt.x - 8, screenPt.y - 8, 16, 16);
 
-        // 座標テキスト
+        // 座標テキスト（画面座標で表示）
         ctx.fillStyle = 'rgba(255, 0, 0, 1)';
         ctx.font = 'bold 11px Arial';
-        ctx.fillText(`(${detectedPts[i].x.toFixed(0)},${detectedPts[i].y.toFixed(0)})`, screenPt.x + 12, screenPt.y + 5);
+        ctx.fillText(`(${screenPt.x.toFixed(0)},${screenPt.y.toFixed(0)})`, screenPt.x + 12, screenPt.y + 5);
       }
 
       // 画面左上に debug 情報を表示
