@@ -785,7 +785,7 @@
 
     function autoShutterLoop() {
       animId = requestAnimationFrame(autoShutterLoop);
-      if (!video.srcObject || !autoShutterEnabled) return;
+      if (!video.srcObject) return;
 
       frameCount++;
       if (frameCount % DETECT_INTERVAL !== 0) return;
@@ -897,7 +897,8 @@
         detectCount++;
         console.log(`連続検出: ${detectCount}/${DETECT_THRESHOLD}`);
         a4Frame.style.borderColor = `rgba(34, 197, 94, ${0.4 + detectCount / DETECT_THRESHOLD * 0.6})`;
-        if (detectCount >= DETECT_THRESHOLD) {
+        // autoShutterEnabled が true の時だけ自動撮影を実行
+        if (autoShutterEnabled && detectCount >= DETECT_THRESHOLD) {
           console.log('自動撮影実行！');
           autoShutterEnabled = false;
           // 検出時点の detectCanvas を保存
