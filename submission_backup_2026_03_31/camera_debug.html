@@ -654,15 +654,15 @@
         ctx.fill();
       }
 
-      // 4点を赤い線で結ぶ
+      // 4点を赤い線で結ぶ（TL → TR → BR → BL → TL）
       ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(screenMarkers[0].x, screenMarkers[0].y);
-      for (let i = 1; i < 4; i++) {
-        ctx.lineTo(screenMarkers[i].x, screenMarkers[i].y);
-      }
-      ctx.lineTo(screenMarkers[0].x, screenMarkers[0].y); // 閉じる
+      ctx.moveTo(screenMarkers[0].x, screenMarkers[0].y);  // TL
+      ctx.lineTo(screenMarkers[1].x, screenMarkers[1].y);  // TR
+      ctx.lineTo(screenMarkers[3].x, screenMarkers[3].y);  // BR
+      ctx.lineTo(screenMarkers[2].x, screenMarkers[2].y);  // BL
+      ctx.lineTo(screenMarkers[0].x, screenMarkers[0].y);  // TL に戻る
       ctx.stroke();
     }
 
