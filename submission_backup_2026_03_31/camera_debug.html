@@ -130,7 +130,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260415-017';
+    const VERSION = '20260416-001-detect-canvas';
 
     const video = document.getElementById('video');
     const a4Frame = document.getElementById('a4Frame');
@@ -816,10 +816,20 @@
       frameCount++;
       if (frameCount % DETECT_INTERVAL !== 0) return;
 
+      // detectCanvas を A4 比で計算（縦横比固定）
+      const A4_ASPECT = 297 / 210;
       const scale = DETECT_WIDTH / video.videoWidth;
       detectCanvas.width = DETECT_WIDTH;
-      detectCanvas.height = Math.round(video.videoHeight * scale);
-      detectCanvas.getContext('2d').drawImage(video, 0, 0, detectCanvas.width, detectCanvas.height);
+      detectCanvas.height = Math.round(DETECT_WIDTH * A4_ASPECT);  // 1280 × 1.414 = 1809
+
+      // video をレターボックス処理で描画（黒い余白で縦横比の差を吸収）
+      const ctx = detectCanvas.getContext('2d');
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, detectCanvas.width, detectCanvas.height);
+
+      const videoDrawHeight = Math.round(1280 / (video.videoWidth / video.videoHeight));
+      const offsetY = (detectCanvas.height - videoDrawHeight) / 2;
+      ctx.drawImage(video, 0, offsetY, 1280, videoDrawHeight);
 
       const imgData = detectCanvas.getContext('2d').getImageData(
         0, 0, detectCanvas.width, detectCanvas.height
