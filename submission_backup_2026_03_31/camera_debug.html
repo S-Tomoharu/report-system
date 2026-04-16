@@ -285,21 +285,20 @@
 
       const results = [];
       for (const cand of candidates) {
-        let sx = 0, sy = 0, cnt = 0;
+        // 暗いピクセル数を計算（品質フィルタ用）
+        let darkCnt = 0;
         const cx1 = Math.min(cand.x + winW, rw), cy1 = Math.min(cand.y + winH, rh);
         for (let y = cand.y; y < cy1; y++) {
           for (let x = cand.x; x < cx1; x++) {
             if (gray[y * rw + x] < DARK_THRESH) {
-              sx += rx + x;
-              sy += ry + y;
-              cnt++;
+              darkCnt++;
             }
           }
         }
 
-        if (cnt === 0) continue;
+        if (darkCnt === 0) continue;
 
-        const darkRatio = cnt / (winW * winH);
+        const darkRatio = darkCnt / (winW * winH);
 
         let borderBrightness = 255;
         const borderPixels = [];
@@ -316,9 +315,10 @@
           borderBrightness = borderPixels.reduce((a, b) => a + b, 0) / borderPixels.length;
         }
 
+        // ウィンドウの左上 (cand.x, cand.y) をそのまま返す
         results.push({
-          x: sx / cnt,
-          y: sy / cnt,
+          x: cand.x,
+          y: cand.y,
           contrast: cand.contrast,
           brightness: cand.centerAvg,
           darkRatio: darkRatio,
@@ -428,17 +428,18 @@
         if (deduped.length >= MAX_COMBO_CANDIDATES) break;
       }
 
-      // 品質フィルタ + 精密中心座標
+      // 品質フィルタ + ウィンドウ左上座標
       const results = [];
       for (const cand of deduped) {
-        let sx = 0, sy = 0, cnt = 0;
+        // 暗いピクセル数を計算（品質フィルタ用）
+        let darkCnt = 0;
         for (let y = cand.y; y < Math.min(cand.y + winH, imgH); y++) {
           for (let x = cand.x; x < Math.min(cand.x + winW, imgW); x++) {
-            if (gray[y * imgW + x] < DARK_THRESH) { sx += x; sy += y; cnt++; }
+            if (gray[y * imgW + x] < DARK_THRESH) { darkCnt++; }
           }
         }
-        if (cnt === 0) continue;
-        const darkRatio = cnt / (winW * winH);
+        if (darkCnt === 0) continue;
+        const darkRatio = darkCnt / (winW * winH);
         if (darkRatio < DARK_PIXEL_RATIO_MIN) continue;
 
         let borderSum = 0, borderCnt = 0;
@@ -455,8 +456,9 @@
         }
         if (borderCnt === 0 || borderSum / borderCnt < MIN_BORDER_BRIGHTNESS) continue;
 
+        // ウィンドウの左上 (cand.x, cand.y) をそのまま返す
         results.push({
-          x: sx / cnt, y: sy / cnt,
+          x: cand.x, y: cand.y,
           contrast: cand.contrast, brightness: cand.centerAvg,
           darkRatio, borderBrightness: borderSum / borderCnt
         });
@@ -529,14 +531,15 @@
           const centerAvg = rectSum(x, y, x + winW, y + winH) / (winW * winH);
           if (centerAvg > MAX_CENTER_BRIGHTNESS) { brightnessFailed++; continue; }
 
-          let sx = 0, sy = 0, cnt = 0;
+          // 暗いピクセル数を計算（品質フィルタ用）
+          let darkCnt = 0;
           for (let yy = y; yy < Math.min(y + winH, imgH); yy++) {
             for (let xx = x; xx < Math.min(x + winW, imgW); xx++) {
-              if (gray[yy * imgW + xx] < DARK_THRESH) { sx += xx; sy += yy; cnt++; }
+              if (gray[yy * imgW + xx] < DARK_THRESH) { darkCnt++; }
             }
           }
-          if (cnt === 0) { darkFailed++; continue; }
-          const darkRatio = cnt / (winW * winH);
+          if (darkCnt === 0) { darkFailed++; continue; }
+          const darkRatio = darkCnt / (winW * winH);
           if (darkRatio < DARK_PIXEL_RATIO_MIN) { darkFailed++; continue; }
 
           let borderSum = 0, borderCnt = 0;
@@ -553,8 +556,9 @@
           }
           if (borderCnt === 0 || borderSum / borderCnt < MIN_BORDER_BRIGHTNESS) { borderFailed++; continue; }
 
+          // ウィンドウの左上 (x, y) をそのまま返す
           candidates.push({
-            x: sx / cnt, y: sy / cnt,
+            x: x, y: y,
             contrast, brightness: centerAvg, darkRatio,
             borderBrightness: borderSum / borderCnt
           });
