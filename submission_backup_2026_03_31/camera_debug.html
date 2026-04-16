@@ -463,6 +463,25 @@
           darkRatio, borderBrightness: borderSum / borderCnt
         });
       }
+
+      // 固定位置（detectCanvas中央）でのcontrast値を計算・保存（デバッグ用）
+      const fixedX = Math.max(0, Math.floor(imgW / 2 - winW / 2));
+      const fixedY = Math.max(0, Math.floor(imgH / 2 - winH / 2));
+      if (fixedX + winW <= imgW && fixedY + winH <= imgH) {
+        const fixedCenterS = rectSum(fixedX, fixedY, fixedX + winW, fixedY + winH);
+        const fixedCenterAvg = fixedCenterS / (winW * winH);
+        const fixedOx0 = Math.max(0, fixedX - margin);
+        const fixedOy0 = Math.max(0, fixedY - margin);
+        const fixedOx1 = Math.min(imgW, fixedX + winW + margin);
+        const fixedOy1 = Math.min(imgH, fixedY + winH + margin);
+        const fixedOuterS = rectSum(fixedOx0, fixedOy0, fixedOx1, fixedOy1);
+        const fixedSurroundPixels = (fixedOx1-fixedOx0)*(fixedOy1-fixedOy0) - (winW*winH);
+        if (fixedSurroundPixels > 0) {
+          const fixedContrast = (fixedOuterS - fixedCenterS) / fixedSurroundPixels - fixedCenterAvg;
+          window.fixedPointDebug = { x: fixedX, y: fixedY, contrast: fixedContrast, brightness: fixedCenterAvg };
+        }
+      }
+
       return results;
     }
 
@@ -811,6 +830,33 @@
       ctx.fillText(`Frame: (${frameRect.width.toFixed(0)}x${frameRect.height.toFixed(0)})`, debugX, debugY);
       debugY += 12;
       ctx.fillText(`Range: (${screenRangeW.toFixed(0)}x${screenRangeH.toFixed(0)})`, debugX, debugY);
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 固定位置（detectCanvas中央）の監視
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (window.fixedPointDebug) {
+        const fp = window.fixedPointDebug;
+        // detectCanvas座標 → video座標 → 画面座標
+        const videoScale = video.videoWidth / DETECT_WIDTH;
+        const offset = getCoverOffset(video);
+        const fpScreenX = fp.x * videoScale / offset.scaleX + offset.offsetX;
+        const fpScreenY = fp.y * videoScale / offset.scaleY + offset.offsetY;
+        const winW = Math.max(8, Math.round(DETECT_WIDTH * params.MARKER_SIZE_RATIO));
+        const fpScreenW = winW * videoScale / offset.scaleX;
+
+        // 固定位置の四角を描画（青色の枠）
+        ctx.strokeStyle = 'rgba(0, 150, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(fpScreenX, fpScreenY, fpScreenW, fpScreenW);
+
+        // contrast値を四角の下に表示
+        ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillText(`Fixed: C=${fp.contrast.toFixed(1)} B=${fp.brightness.toFixed(0)}`, fpScreenX, fpScreenY + fpScreenW + 15);
+
+        // コンソールにも出力
+        console.log(`[固定位置] (${fp.x.toFixed(0)},${fp.y.toFixed(0)}) Contrast=${fp.contrast.toFixed(1)} Brightness=${fp.brightness.toFixed(0)}`);
+      }
     }
 
     function autoShutterLoop() {
