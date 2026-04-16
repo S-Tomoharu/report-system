@@ -409,7 +409,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260416-001-detect-canvas';
+    const VERSION = '20260416-002';
 
     // バージョン badge を更新
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
@@ -741,6 +741,7 @@
       MARKER_DETECT_PARAMS.MIN_CONTRAST = parseFloat(document.getElementById('paramMinContrast').value);
       MARKER_DETECT_PARAMS.MARGIN_RATIO = parseFloat(document.getElementById('paramMarginRatio').value);
       MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO = parseFloat(document.getElementById('paramMarkerSize').value);
+      MARKER_DETECT_PARAMS.RED_SQUARE_SIZE = Math.round(1280 * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
       MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
       MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
       MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
@@ -779,6 +780,7 @@
       MARKER_DETECT_PARAMS.MIN_CONTRAST = parseFloat(document.getElementById('paramMinContrast').value);
       MARKER_DETECT_PARAMS.MARGIN_RATIO = parseFloat(document.getElementById('paramMarginRatio').value);
       MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO = parseFloat(document.getElementById('paramMarkerSize').value);
+      MARKER_DETECT_PARAMS.RED_SQUARE_SIZE = Math.round(1280 * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
       MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
       MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
       MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
@@ -1137,6 +1139,7 @@
       MARKER_DETECT_PARAMS.MIN_CONTRAST = parseFloat(document.getElementById('paramMinContrast').value);
       MARKER_DETECT_PARAMS.MARGIN_RATIO = parseFloat(document.getElementById('paramMarginRatio').value);
       MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO = parseFloat(document.getElementById('paramMarkerSize').value);
+      MARKER_DETECT_PARAMS.RED_SQUARE_SIZE = Math.round(1280 * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
       MARKER_DETECT_PARAMS.EXCLUDE_MARGIN_RATIO = parseFloat(document.getElementById('paramExcludeMargin').value);
       MARKER_DETECT_PARAMS.MAX_CENTER_BRIGHTNESS = parseFloat(document.getElementById('paramMaxCenterBrightness').value);
       MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(document.getElementById('paramDetectionRange').value);
