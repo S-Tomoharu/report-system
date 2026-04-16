@@ -671,12 +671,11 @@
         y: m.y / offset.scaleY + offset.offsetY
       }));
 
-      // 赤い四角で描画（RED_SQUARE_SIZE を使用）
-      const squareSize = params.RED_SQUARE_SIZE;
-      const halfSize = squareSize / 2;
+      // 赤い四角で描画（サイズもスケーリング、座標は左上を基準）
+      const squareSize = params.RED_SQUARE_SIZE * videoScale / offset.scaleX;
       ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
       for (const m of screenMarkers) {
-        ctx.fillRect(m.x - halfSize, m.y - halfSize, squareSize, squareSize);
+        ctx.fillRect(m.x, m.y, squareSize, squareSize);
       }
 
       // 4点を赤い線で結ぶ（TL → TR → BR → BL → TL）
@@ -772,11 +771,10 @@
       for (let i = 0; i < detectedPts.length; i++) {
         const screenPt = detectToScreen(detectedPts[i]);
 
-        // 赤い四角（RED_SQUARE_SIZE で動的に描画）
-        const squareSize = params.RED_SQUARE_SIZE;
-        const halfSize = squareSize / 2;
+        // 赤い四角（RED_SQUARE_SIZE をスケーリング、座標は左上を基準）
+        const squareSize = params.RED_SQUARE_SIZE * videoScale / offset.scaleX;
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-        ctx.fillRect(screenPt.x - halfSize, screenPt.y - halfSize, squareSize, squareSize);
+        ctx.fillRect(screenPt.x, screenPt.y, squareSize, squareSize);
 
         // 座標テキスト（画面座標で表示）
         ctx.fillStyle = 'rgba(255, 0, 0, 1)';
