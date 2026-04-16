@@ -693,7 +693,7 @@
       overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     }
 
-    function drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect) {
+    function drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect, params) {
       console.log(`drawDebugOverlay called: ${detectedPts.length} points, screenRangeW=${screenRangeW}, screenRangeH=${screenRangeH}`);
       overlayCanvas.width = video.clientWidth;
       overlayCanvas.height = video.clientHeight;
@@ -768,9 +768,11 @@
       for (let i = 0; i < detectedPts.length; i++) {
         const screenPt = detectToScreen(detectedPts[i]);
 
-        // 赤い四角
+        // 赤い四角（RED_SQUARE_SIZE で動的に描画）
+        const squareSize = params.RED_SQUARE_SIZE;
+        const halfSize = squareSize / 2;
         ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
-        ctx.fillRect(screenPt.x - 8, screenPt.y - 8, 16, 16);
+        ctx.fillRect(screenPt.x - halfSize, screenPt.y - halfSize, squareSize, squareSize);
 
         // 座標テキスト（画面座標で表示）
         ctx.fillStyle = 'rgba(255, 0, 0, 1)';
@@ -926,7 +928,7 @@
       console.log(`検出数: ${detectedPts.length}/${cornerDefs.length}`);
 
       // 常にデバッグ表示（検出失敗時も黄色い枠を見せる）
-      drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect);
+      drawDebugOverlay(detectedPts, cornerDefs, screenRangeW, screenRangeH, rangeW, rangeH, frameRect, MARKER_DETECT_PARAMS);
 
       if (detectedPts.length === cornerDefs.length) {
         drawDetectionMarkers(detectedPts, MARKER_DETECT_PARAMS);
