@@ -894,66 +894,6 @@
         0, 0, detectCanvas.width, detectCanvas.height
       );
 
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 固定位置（detectCanvas中央）でのcontrast計算
-      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      {
-        const params = MARKER_DETECT_PARAMS;
-        const winW = Math.max(8, Math.round(detectCanvas.width * params.MARKER_SIZE_RATIO));
-        const winH = Math.max(8, Math.round(detectCanvas.height * params.MARKER_SIZE_RATIO));
-        const margin = Math.max(4, Math.round(winW * params.MARGIN_RATIO));
-
-        // グレースケール変換
-        const gray = new Uint8Array(detectCanvas.width * detectCanvas.height);
-        const d = imgData.data;
-        for (let i = 0; i < detectCanvas.width * detectCanvas.height; i++) {
-          const p = i * 4;
-          gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
-        }
-
-        // 積分画像
-        const W1 = detectCanvas.width + 1;
-        const integ = new Int32Array((detectCanvas.height + 1) * W1);
-        for (let y = 1; y <= detectCanvas.height; y++) {
-          for (let x = 1; x <= detectCanvas.width; x++) {
-            integ[y * W1 + x] = gray[(y-1) * detectCanvas.width + (x-1)]
-              + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
-          }
-        }
-
-        function rectSum(x0, y0, x1, y1) {
-          x0 = Math.max(0, x0); y0 = Math.max(0, y0);
-          x1 = Math.min(detectCanvas.width, x1); y1 = Math.min(detectCanvas.height, y1);
-          if (x0 >= x1 || y0 >= y1) return 0;
-          return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
-        }
-
-        // 固定位置（中央）
-        const fixedX = Math.max(0, Math.floor(detectCanvas.width / 2 - winW / 2));
-        const fixedY = Math.max(0, Math.floor(detectCanvas.height / 2 - winH / 2));
-
-        if (fixedX + winW <= detectCanvas.width && fixedY + winH <= detectCanvas.height) {
-          const centerS = rectSum(fixedX, fixedY, fixedX + winW, fixedY + winH);
-          const centerAvg = centerS / (winW * winH);
-          const ox0 = Math.max(0, fixedX - margin);
-          const oy0 = Math.max(0, fixedY - margin);
-          const ox1 = Math.min(detectCanvas.width, fixedX + winW + margin);
-          const oy1 = Math.min(detectCanvas.height, fixedY + winH + margin);
-          const outerS = rectSum(ox0, oy0, ox1, oy1);
-          const surroundPixels = (ox1-ox0)*(oy1-oy0) - (winW*winH);
-          if (surroundPixels > 0) {
-            const surroundAvg = (outerS - centerS) / surroundPixels;
-            const contrast = surroundAvg - centerAvg;
-            window.fixedPointDebug = {
-              x: fixedX, y: fixedY,
-              centerS: centerS, centerAvg: centerAvg,
-              outerS: outerS, surroundPixels: surroundPixels, surroundAvg: surroundAvg,
-              contrast: contrast
-            };
-          }
-        }
-      }
-
       // A4 フレーム四隅の画面座標を取得
       const frameRect = a4Frame.getBoundingClientRect();
       const frameTL = { x: frameRect.left, y: frameRect.top };
@@ -1021,7 +961,49 @@
       const { gray, integ, W1 } = preprocessImage(imgData, detectCanvas.width, detectCanvas.height);
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // BR領域の中央での固定点 contrast 計算
+      // 青枠：A4フレーム中央での固定点 contrast 計算
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      {
+        const params = MARKER_DETECT_PARAMS;
+        const winW = Math.max(8, Math.round(detectCanvas.width * params.MARKER_SIZE_RATIO));
+        const winH = Math.max(8, Math.round(detectCanvas.height * params.MARKER_SIZE_RATIO));
+        const margin = Math.max(4, Math.round(winW * params.MARGIN_RATIO));
+
+        function rectSum(x0, y0, x1, y1) {
+          x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+          x1 = Math.min(detectCanvas.width, x1); y1 = Math.min(detectCanvas.height, y1);
+          if (x0 >= x1 || y0 >= y1) return 0;
+          return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
+        }
+
+        // 固定位置（detectCanvas中央）
+        const fixedX = Math.max(0, Math.floor(detectCanvas.width / 2 - winW / 2));
+        const fixedY = Math.max(0, Math.floor(detectCanvas.height / 2 - winH / 2));
+
+        if (fixedX + winW <= detectCanvas.width && fixedY + winH <= detectCanvas.height) {
+          const centerS = rectSum(fixedX, fixedY, fixedX + winW, fixedY + winH);
+          const centerAvg = centerS / (winW * winH);
+          const ox0 = Math.max(0, fixedX - margin);
+          const oy0 = Math.max(0, fixedY - margin);
+          const ox1 = Math.min(detectCanvas.width, fixedX + winW + margin);
+          const oy1 = Math.min(detectCanvas.height, fixedY + winH + margin);
+          const outerS = rectSum(ox0, oy0, ox1, oy1);
+          const surroundPixels = (ox1-ox0)*(oy1-oy0) - (winW*winH);
+          if (surroundPixels > 0) {
+            const surroundAvg = (outerS - centerS) / surroundPixels;
+            const contrast = surroundAvg - centerAvg;
+            window.fixedPointDebug = {
+              x: fixedX, y: fixedY,
+              centerS: centerS, centerAvg: centerAvg,
+              outerS: outerS, surroundPixels: surroundPixels, surroundAvg: surroundAvg,
+              contrast: contrast
+            };
+          }
+        }
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 緑枠：BR領域の中央での固定点 contrast 計算
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       if (cornerDefs.length > 0) {
         const brCorner = cornerDefs[0];  // BR領域
