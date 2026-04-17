@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>マーカー検出パラメータ調整</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a1a;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 20px;
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+
+    #version {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 12px;
+      color: #888;
+      background: #2a2a2a;
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 30px;
+      color: #4a9eff;
+    }
+
+    .control-group {
+      background: #2a2a2a;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #4a9eff;
+    }
+
+    .control-label {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .control-value {
+      background: #1a1a1a;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #444;
+      outline: none;
+      -webkit-appearance: none;
+      margin: 10px 0;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #4a9eff;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #4a9eff;
+      cursor: pointer;
+      border: none;
+    }
+
+    .info-box {
+      background: #1a2a3a;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.6;
+      border-left: 3px solid #4a9eff;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #openCameraBtn {
+      background: #4a9eff;
+      color: white;
+    }
+
+    #openCameraBtn:active {
+      opacity: 0.8;
+    }
+
+    #closeBtn {
+      background: #444;
+      color: white;
+    }
+
+    #closeBtn:active {
+      opacity: 0.7;
+    }
+
+    #capturedImage {
+      margin-top: 30px;
+      max-width: 100%;
+      border-radius: 8px;
+    }
+
+    .image-container {
+      margin-top: 30px;
+      background: #2a2a2a;
+      padding: 20px;
+      border-radius: 8px;
+    }
+
+    .image-container h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+      color: #4a9eff;
+    }
+  </style>
+</head>
+<body>
+  <div id="version"></div>
+
+  <h1>マーカー検出パラメータ調整</h1>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>MARKER_SIZE_RATIO</span>
+      <span class="control-value" id="markerSizeValue">0.038</span>
+    </div>
+    <input type="range" id="markerSizeSlider" min="0.01" max="0.1" step="0.001" value="0.038">
+    <div class="info-box">
+      検出対象のマーカーサイズ。A4座標系の幅に対する比率。<br>
+      0.038 = 約8mm（デフォルト）
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>MARGIN_RATIO</span>
+      <span class="control-value" id="marginValue">0.5</span>
+    </div>
+    <input type="range" id="marginSlider" min="0" max="2" step="0.1" value="0.5">
+    <div class="info-box">
+      マーカー周囲の余白比率。マーカーサイズに対する倍率。<br>
+      0.5 = マーカーサイズの50%
+    </div>
+  </div>
+
+  <div class="button-group">
+    <button id="openCameraBtn">カメラを開く</button>
+    <button id="closeBtn">閉じる</button>
+  </div>
+
+  <div class="image-container" id="imageContainer" style="display: none;">
+    <h2>撮影済み画像</h2>
+    <img id="capturedImage" alt="撮影済み画像">
+  </div>
+
+  <script>
+    const VERSION = '20260418-002';
+    document.getElementById('version').textContent = `v${VERSION}`;
+
+    const markerSizeSlider = document.getElementById('markerSizeSlider');
+    const marginSlider = document.getElementById('marginSlider');
+    const markerSizeValue = document.getElementById('markerSizeValue');
+    const marginValue = document.getElementById('marginValue');
+    const openCameraBtn = document.getElementById('openCameraBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const imageContainer = document.getElementById('imageContainer');
+    const capturedImage = document.getElementById('capturedImage');
+
+    // パラメータ
+    const PARAMS = {
+      MARKER_SIZE_RATIO: 0.038,
+      MARGIN_RATIO: 0.5
+    };
+
+    let cameraWindow = null;
+
+    function updateDisplay() {
+      markerSizeValue.textContent = PARAMS.MARKER_SIZE_RATIO.toFixed(3);
+      marginValue.textContent = PARAMS.MARGIN_RATIO.toFixed(1);
+    }
+
+    markerSizeSlider.addEventListener('input', (e) => {
+      PARAMS.MARKER_SIZE_RATIO = parseFloat(e.target.value);
+      updateDisplay();
+      // camera_debugウィンドウが開いていれば更新
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+      }
+    });
+
+    marginSlider.addEventListener('input', (e) => {
+      PARAMS.MARGIN_RATIO = parseFloat(e.target.value);
+      updateDisplay();
+      // camera_debugウィンドウが開いていれば更新
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+      }
+    });
+
+    openCameraBtn.addEventListener('click', () => {
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.focus();
+      } else {
+        cameraWindow = window.open(
+          './camera_debug.html',
+          'cameraWindow',
+          'width=390,height=844'
+        );
+        if (cameraWindow) {
+          setTimeout(() => {
+            cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+            cameraWindow.captureCallback = displayCapturedImage;
+          }, 500);
+        }
+      }
+    });
+
+    closeBtn.addEventListener('click', () => {
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.close();
+      }
+      window.close();
+    });
+
+    // camera_debugから画像を受け取る
+    window.displayCapturedImage = function(imageSrc) {
+      capturedImage.src = imageSrc;
+      imageContainer.style.display = 'block';
+    };
+
+    updateDisplay();
+  </script>
+</body>
+</html>

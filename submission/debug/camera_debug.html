@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>カメラで撮影 - マーカー検出</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      overflow: hidden;
+      height: 100dvh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    #video {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    #version {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      font-size: 12px;
+      color: #888;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+
+    #controls {
+      position: fixed;
+      bottom: 32px;
+      left: 0;
+      right: 0;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      padding: 0 20px;
+      pointer-events: auto;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    #captureBtn {
+      background: #2563eb;
+      color: white;
+    }
+
+    #captureBtn:active {
+      opacity: 0.8;
+    }
+
+    #closeBtn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    #closeBtn:active {
+      opacity: 0.7;
+    }
+
+    #error {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      right: 20px;
+      padding: 16px;
+      background: rgba(220, 38, 38, 0.9);
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      z-index: 100;
+    }
+
+    #debugCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <video id="video"></video>
+  <canvas id="debugCanvas"></canvas>
+  <div id="overlay"></div>
+  <div id="version"></div>
+  <div id="error"></div>
+
+  <div id="controls">
+    <button id="captureBtn">撮影する</button>
+    <button id="closeBtn">閉じる</button>
+  </div>
+
+  <script>
+    const VERSION = '20260418-002';
+    document.getElementById('version').textContent = `v${VERSION}`;
+
+    const video = document.getElementById('video');
+    const debugCanvas = document.getElementById('debugCanvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const errorDiv = document.getElementById('error');
+
+    // A4座標系の仕様
+    const A4_SPEC = {
+      width: 2480,
+      height: 3507,
+      // ビデオ座標系での原点
+      videoOriginX: 760,
+      videoOriginY: 1246.5
+    };
+
+    // ビデオ座標系のサイズ（カメラ解像度）
+    const VIDEO_SPEC = {
+      width: 4000,
+      height: 6000
+    };
+
+    // 固定評価点（A4座標系）
+    const evaluationPoints = {
+      blue: { x: 1240, y: 1753.5, size: 94, label: '青' },
+      green: { x: 2327, y: 3354, size: 94, label: '緑' },
+      purple: { x: 2327, y: 1246.5, size: 94, label: '紫' }
+    };
+
+    // パラメータ（marker_debugから受け取る）
+    let MARKER_DETECT_PARAMS = {
+      MARKER_SIZE_RATIO: 0.038,
+      MARGIN_RATIO: 0.5
+    };
+
+    let animId = null;
+    let frameCount = 0;
+
+    function showError(msg) {
+      errorDiv.textContent = msg;
+      errorDiv.style.display = 'block';
+    }
+
+    // ビデオを取得
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 4000 },
+            height: { ideal: 6000 }
+          }
+        });
+
+        video.addEventListener('loadedmetadata', () => {
+          processFrame();
+        }, { once: true });
+
+        video.srcObject = stream;
+        await video.play();
+      } catch (err) {
+        showError('カメラを起動できませんでした: ' + err.message);
+      }
+    }
+
+    // A4座標 → ビデオ座標
+    function a4ToVideo(a4X, a4Y) {
+      return {
+        x: A4_SPEC.videoOriginX + a4X,
+        y: A4_SPEC.videoOriginY + a4Y
+      };
+    }
+
+    // ビデオ座標 → 画面座標
+    function videoToScreen(videoX, videoY) {
+      const scaleX = video.clientWidth / video.videoWidth;
+      const scaleY = video.clientHeight / video.videoHeight;
+
+      // ビデオがレターボックスで表示されている場合のオフセット計算
+      const offsetX = (video.clientWidth - video.videoWidth * scaleX) / 2;
+      const offsetY = (video.clientHeight - video.videoHeight * scaleY) / 2;
+
+      return {
+        x: offsetX + videoX * scaleX,
+        y: offsetY + videoY * scaleY
+      };
+    }
+
+    // コントラスト計算
+    function calculateContrast(imgData, A4X, A4Y, windowSize) {
+      const d = imgData.data;
+      const videoW = video.videoWidth;
+      const videoH = video.videoHeight;
+
+      // グレースケール変換
+      const gray = new Uint8Array(videoW * videoH);
+      for (let i = 0; i < videoW * videoH; i++) {
+        const p = i * 4;
+        gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
+      }
+
+      // 積分画像
+      const W1 = videoW + 1;
+      const integ = new Int32Array((videoH + 1) * W1);
+      for (let y = 1; y <= videoH; y++) {
+        for (let x = 1; x <= videoW; x++) {
+          integ[y * W1 + x] = gray[(y-1) * videoW + (x-1)]
+            + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
+        }
+      }
+
+      function rectSum(x0, y0, x1, y1) {
+        x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+        x1 = Math.min(videoW, x1); y1 = Math.min(videoH, y1);
+        if (x0 >= x1 || y0 >= y1) return 0;
+        return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
+      }
+
+      // A4座標をビデオ座標に変換
+      const videoPt = a4ToVideo(A4X, A4Y);
+      const vX = Math.round(videoPt.x);
+      const vY = Math.round(videoPt.y);
+
+      // 中央部分のコントラスト
+      const centerS = rectSum(vX, vY, vX + windowSize, vY + windowSize);
+      const centerAvg = centerS / (windowSize * windowSize);
+
+      const margin = Math.round(windowSize * MARKER_DETECT_PARAMS.MARGIN_RATIO);
+      const ox0 = vX - margin;
+      const oy0 = vY - margin;
+      const ox1 = vX + windowSize + margin;
+      const oy1 = vY + windowSize + margin;
+
+      const outerS = rectSum(ox0, oy0, ox1, oy1);
+      const surroundPixels = (ox1-ox0)*(oy1-oy0) - (windowSize*windowSize);
+
+      if (surroundPixels > 0) {
+        const surroundAvg = (outerS - centerS) / surroundPixels;
+        return surroundAvg - centerAvg;
+      }
+      return 0;
+    }
+
+    function processFrame() {
+      if (!video.srcObject) return;
+
+      animId = requestAnimationFrame(processFrame);
+      frameCount++;
+
+      if (frameCount % 3 !== 0) return; // 3フレームごとに処理
+
+      // ビデオ座標でキャンバスを描画
+      debugCanvas.width = video.videoWidth;
+      debugCanvas.height = video.videoHeight;
+      const ctx = debugCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+
+      const imgData = ctx.getImageData(0, 0, video.videoWidth, video.videoHeight);
+
+      // ウィンドウサイズ計算
+      const windowSize = Math.round(video.videoWidth * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
+
+      // 各固定点でコントラスト計算
+      const contrastValues = {};
+      for (const [key, point] of Object.entries(evaluationPoints)) {
+        const contrast = calculateContrast(imgData, point.x, point.y, windowSize);
+        contrastValues[key] = contrast;
+        console.log(`[${point.label}] コントラスト: ${contrast.toFixed(1)}`);
+      }
+
+      // 画面上に表示
+      const screenCtx = document.createElement('canvas').getContext('2d');
+      debugCanvas.width = window.innerWidth;
+      debugCanvas.height = window.innerHeight;
+      ctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
+
+      ctx.font = 'bold 14px monospace';
+      for (const [key, point] of Object.entries(evaluationPoints)) {
+        const screenPt = videoToScreen(A4_SPEC.videoOriginX + point.x, A4_SPEC.videoOriginY + point.y);
+        const screenSize = (point.size / VIDEO_SPEC.width) * video.clientWidth;
+
+        // 色を決定
+        let color;
+        if (key === 'blue') color = 'rgba(0, 150, 255, 0.7)';
+        else if (key === 'green') color = 'rgba(0, 255, 100, 0.7)';
+        else color = 'rgba(200, 100, 255, 0.7)';
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(screenPt.x, screenPt.y, screenSize, screenSize);
+
+        // コントラスト値を表示
+        ctx.fillStyle = color;
+        ctx.fillText(`${point.label}: ${contrastValues[key].toFixed(1)}`, screenPt.x, screenPt.y - 10);
+      }
+    }
+
+    captureBtn.addEventListener('click', () => {
+      // A4領域をトリミングして撮影
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = A4_SPEC.width;
+      tempCanvas.height = A4_SPEC.height;
+      const tempCtx = tempCanvas.getContext('2d');
+
+      // ビデオからA4領域を切り抜き
+      const srcX = A4_SPEC.videoOriginX;
+      const srcY = A4_SPEC.videoOriginY;
+      const scaleX = video.clientWidth / video.videoWidth;
+      const scaleY = video.clientHeight / video.videoHeight;
+
+      tempCtx.drawImage(
+        video,
+        srcX, srcY, A4_SPEC.width, A4_SPEC.height,
+        0, 0, A4_SPEC.width, A4_SPEC.height
+      );
+
+      const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+
+      // marker_debugに画像を送信
+      if (window.opener && window.opener.displayCapturedImage) {
+        window.opener.displayCapturedImage(imageSrc);
+      }
+
+      // 自動で閉じる
+      setTimeout(() => {
+        window.close();
+      }, 1000);
+    });
+
+    closeBtn.addEventListener('click', () => {
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+      }
+      if (animId) cancelAnimationFrame(animId);
+      window.close();
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(track => track.stop());
+      }
+    });
+
+    startCamera();
+  </script>
+</body>
+</html>
