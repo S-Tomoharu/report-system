@@ -785,63 +785,34 @@
         console.log(`赤い四角BR(画面座標): (${screenPt.x.toFixed(0)},${screenPt.y.toFixed(0)})`);
       }
 
-      // 画面左上に debug 情報を表示
-      const debugX = 10;
-      let debugY = 60;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      ctx.fillRect(debugX - 5, 45, 300, 200);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-      ctx.font = '10px monospace';
-
-      ctx.fillText(`Range: W=${rangeW.toFixed(0)} H=${rangeH.toFixed(0)}`, debugX, debugY);
-      debugY += 15;
-      ctx.fillText(`Detected: ${detectedPts.length}/${cornerDefs.length}`, debugX, debugY);
-      debugY += 15;
-
-      for (let i = 0; i < cornerDefs.length; i++) {
-        const corner = cornerDefs[i];
-        const pt = detectedPts[i] || { x: '?', y: '?' };
-        const ptStr = detectedPts[i] ? `(${detectedPts[i].x.toFixed(0)},${detectedPts[i].y.toFixed(0)})` : 'NONE';
-        ctx.fillText(`${corner.name}: ${ptStr}`, debugX, debugY);
-        debugY += 12;
-      }
-
-      debugY += 5;
-      ctx.fillText(`Frame: (${frameRect.width.toFixed(0)}x${frameRect.height.toFixed(0)})`, debugX, debugY);
-      debugY += 12;
-      ctx.fillText(`Range: (${screenRangeW.toFixed(0)}x${screenRangeH.toFixed(0)})`, debugX, debugY);
+      // 左上デバッグ表示は非表示（不要）
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 固定位置（detectCanvas中央）の監視
+      // 固定位置（A4フレーム中央）の監視
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       if (window.fixedPointDebug) {
         const fp = window.fixedPointDebug;
-        // detectCanvas座標 → video座標 → 画面座標
+        // A4フレーム（a4Frame）の画面座標での中央を取得
+        const frameRect = a4Frame.getBoundingClientRect();
+        const centerScreenX = frameRect.left + frameRect.width / 2;
+        const centerScreenY = frameRect.top + frameRect.height / 2;
+        const winW = Math.max(8, Math.round(DETECT_WIDTH * params.MARKER_SIZE_RATIO));
         const videoScale = video.videoWidth / DETECT_WIDTH;
         const offset = getCoverOffset(video);
-        const fpScreenX = fp.x * videoScale / offset.scaleX + offset.offsetX;
-        const fpScreenY = fp.y * videoScale / offset.scaleY + offset.offsetY;
-        const winW = Math.max(8, Math.round(DETECT_WIDTH * params.MARKER_SIZE_RATIO));
         const fpScreenW = winW * videoScale / offset.scaleX;
 
-        // 固定位置の四角を描画（青色の枠）
+        // 固定位置の四角を描画（青色の枠）- 中央基準で描画
         ctx.strokeStyle = 'rgba(0, 150, 255, 0.9)';
         ctx.lineWidth = 2;
-        ctx.strokeRect(fpScreenX, fpScreenY, fpScreenW, fpScreenW);
+        ctx.strokeRect(centerScreenX - fpScreenW / 2, centerScreenY - fpScreenW / 2, fpScreenW, fpScreenW);
 
-        // 詳細値を四角の下に表示（背景付き、四角と重ならない）
-        const textX = fpScreenX;
-        const textY = fpScreenY + fpScreenW + 15;  // 青四角の下に余白を置く
+        // 詳細値をテキストのみで表示（背景なし）
+        const textX = centerScreenX + fpScreenW / 2 + 10;
+        const textY = centerScreenY - fpScreenW / 2;
 
-        // 背景ボックス
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(textX - 5, textY - 5, 155, 60);
-
-        // テキスト
         ctx.fillStyle = 'rgba(0, 150, 255, 0.95)';
-        ctx.font = 'bold 10px monospace';
-        let displayY = textY + 12;
+        ctx.font = 'bold 11px monospace';
+        let displayY = textY;
         ctx.fillText(`cS=${fp.centerS.toFixed(0)} cA=${fp.centerAvg.toFixed(0)}`, textX, displayY);
         displayY += 12;
         ctx.fillText(`oS=${fp.outerS.toFixed(0)} sP=${fp.surroundPixels.toFixed(0)}`, textX, displayY);
