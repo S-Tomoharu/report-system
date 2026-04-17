@@ -130,7 +130,7 @@
 
   <script>
     // バージョン管理（キャッシュ回避）
-    const VERSION = '20260417-012';
+    const VERSION = '20260417-013';
 
     const video = document.getElementById('video');
     const a4Frame = document.getElementById('a4Frame');
@@ -866,6 +866,45 @@
         // コンソールにも出力
         console.log(`[BR領域固定点] centerS=${brFp.centerS.toFixed(0)} outerS=${brFp.outerS.toFixed(0)} surroundPixels=${brFp.surroundPixels.toFixed(0)} centerAvg=${brFp.centerAvg.toFixed(0)} surroundAvg=${brFp.surroundAvg.toFixed(0)} contrast=${brFp.contrast.toFixed(1)}`);
       }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 新しい評価点監視表示（青の右 × 緑の上）
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (window.fixedPointDebugRX) {
+        const rxFp = window.fixedPointDebugRX;
+        // detectCanvas座標 → video座標 → 画面座標
+        const videoScale = video.videoWidth / DETECT_WIDTH;
+        const offset = getCoverOffset(video);
+        const rxScreenX = rxFp.x * videoScale / offset.scaleX + offset.offsetX;
+        const rxScreenY = rxFp.y * videoScale / offset.scaleY + offset.offsetY;
+        const winW = Math.max(8, Math.round(DETECT_WIDTH * params.MARKER_SIZE_RATIO));
+        const rxScreenW = winW * videoScale / offset.scaleX;
+
+        // 新評価点の四角を描画（紫色の枠）
+        ctx.strokeStyle = 'rgba(200, 100, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rxScreenX, rxScreenY, rxScreenW, rxScreenW);
+
+        // 詳細値をテキストのみで表示
+        const rxTextX = rxScreenX + rxScreenW + 10;
+        const rxTextY = rxScreenY;
+
+        ctx.fillStyle = 'rgba(200, 100, 255, 0.95)';
+        ctx.font = 'bold 11px monospace';
+        let rxDisplayY = rxTextY;
+        ctx.fillText(`CS=${rxFp.centerS.toFixed(0)}`, rxTextX, rxDisplayY);
+        rxDisplayY += 13;
+        ctx.fillText(`OS=${rxFp.outerS.toFixed(0)} | sP=${rxFp.surroundPixels.toFixed(0)}`, rxTextX, rxDisplayY);
+        rxDisplayY += 13;
+        ctx.fillText(`cA=${rxFp.centerAvg.toFixed(0)}`, rxTextX, rxDisplayY);
+        rxDisplayY += 13;
+        ctx.fillText(`sA=${rxFp.surroundAvg.toFixed(0)}`, rxTextX, rxDisplayY);
+        rxDisplayY += 13;
+        ctx.fillText(`C=${rxFp.contrast.toFixed(1)}`, rxTextX, rxDisplayY);
+
+        // コンソールにも出力
+        console.log(`[右上評価点] centerS=${rxFp.centerS.toFixed(0)} outerS=${rxFp.outerS.toFixed(0)} surroundPixels=${rxFp.surroundPixels.toFixed(0)} centerAvg=${rxFp.centerAvg.toFixed(0)} surroundAvg=${rxFp.surroundAvg.toFixed(0)} contrast=${rxFp.contrast.toFixed(1)}`);
+      }
     }
 
     function autoShutterLoop() {
@@ -1058,6 +1097,44 @@
               centerS: brCenterS, centerAvg: brCenterAvg,
               outerS: brOuterS, surroundPixels: brSurroundPixels, surroundAvg: brSurroundAvg,
               contrast: brContrast
+            };
+          }
+        }
+      }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 新しい評価点（青の右 × 緑の上 の交点）での固定点 contrast 計算
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      {
+        const newPtCenterX = fixedX + winW;
+        const newPtCenterY = brFixedY;
+        const newFixedX = Math.floor(newPtCenterX - winW / 2);
+        const newFixedY = Math.floor(newPtCenterY - winH / 2);
+
+        if (newFixedX >= 0 && newFixedY >= 0 && newFixedX + winW <= detectCanvas.width && newFixedY + winH <= detectCanvas.height) {
+          function rectSum(x0, y0, x1, y1) {
+            x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+            x1 = Math.min(detectCanvas.width, x1); y1 = Math.min(detectCanvas.height, y1);
+            if (x0 >= x1 || y0 >= y1) return 0;
+            return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
+          }
+
+          const newCenterS = rectSum(newFixedX, newFixedY, newFixedX + winW, newFixedY + winH);
+          const newCenterAvg = newCenterS / (winW * winH);
+          const newOx0 = Math.max(0, newFixedX - margin);
+          const newOy0 = Math.max(0, newFixedY - margin);
+          const newOx1 = Math.min(detectCanvas.width, newFixedX + winW + margin);
+          const newOy1 = Math.min(detectCanvas.height, newFixedY + winH + margin);
+          const newOuterS = rectSum(newOx0, newOy0, newOx1, newOy1);
+          const newSurroundPixels = (newOx1-newOx0)*(newOy1-newOy0) - (winW*winH);
+          if (newSurroundPixels > 0) {
+            const newSurroundAvg = (newOuterS - newCenterS) / newSurroundPixels;
+            const newContrast = newSurroundAvg - newCenterAvg;
+            window.fixedPointDebugRX = {
+              x: newFixedX, y: newFixedY,
+              centerS: newCenterS, centerAvg: newCenterAvg,
+              outerS: newOuterS, surroundPixels: newSurroundPixels, surroundAvg: newSurroundAvg,
+              contrast: newContrast
             };
           }
         }
