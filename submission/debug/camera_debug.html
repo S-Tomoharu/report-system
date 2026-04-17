@@ -22,7 +22,7 @@
       display: block;
     }
 
-    #overlay {
+    #displayCanvas {
       position: fixed;
       inset: 0;
       pointer-events: none;
@@ -92,18 +92,11 @@
       display: none;
       z-index: 100;
     }
-
-    #debugCanvas {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body>
   <video id="video"></video>
-  <canvas id="debugCanvas"></canvas>
-  <div id="overlay"></div>
+  <canvas id="displayCanvas"></canvas>
   <div id="version"></div>
   <div id="error"></div>
 
@@ -113,11 +106,11 @@
   </div>
 
   <script>
-    const VERSION = '20260418-002';
+    const VERSION = '20260418-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     const video = document.getElementById('video');
-    const debugCanvas = document.getElementById('debugCanvas');
+    const displayCanvas = document.getElementById('displayCanvas');
     const captureBtn = document.getElementById('captureBtn');
     const closeBtn = document.getElementById('closeBtn');
     const errorDiv = document.getElementById('error');
@@ -152,6 +145,12 @@
 
     let animId = null;
     let frameCount = 0;
+
+    // データ取得用キャンバス（ビデオ解像度、画面には表示しない）
+    const dataCanvas = document.createElement('canvas');
+    dataCanvas.width = VIDEO_SPEC.width;
+    dataCanvas.height = VIDEO_SPEC.height;
+    const dataCtx = dataCanvas.getContext('2d');
 
     function showError(msg) {
       errorDiv.textContent = msg;
@@ -203,7 +202,7 @@
       };
     }
 
-    // コントラスト計算
+    // コントラスト計算（詳細値を返す）
     function calculateContrast(imgData, A4X, A4Y, windowSize) {
       const d = imgData.data;
       const videoW = video.videoWidth;
@@ -239,8 +238,8 @@
       const vY = Math.round(videoPt.y);
 
       // 中央部分のコントラスト
-      const centerS = rectSum(vX, vY, vX + windowSize, vY + windowSize);
-      const centerAvg = centerS / (windowSize * windowSize);
+      const CS = rectSum(vX, vY, vX + windowSize, vY + windowSize);
+      const cA = CS / (windowSize * windowSize);
 
       const margin = Math.round(windowSize * MARKER_DETECT_PARAMS.MARGIN_RATIO);
       const ox0 = vX - margin;
@@ -248,14 +247,24 @@
       const ox1 = vX + windowSize + margin;
       const oy1 = vY + windowSize + margin;
 
-      const outerS = rectSum(ox0, oy0, ox1, oy1);
-      const surroundPixels = (ox1-ox0)*(oy1-oy0) - (windowSize*windowSize);
+      const OS = rectSum(ox0, oy0, ox1, oy1);
+      const sP = (ox1-ox0)*(oy1-oy0) - (windowSize*windowSize);
 
-      if (surroundPixels > 0) {
-        const surroundAvg = (outerS - centerS) / surroundPixels;
-        return surroundAvg - centerAvg;
+      let sA = 0;
+      if (sP > 0) {
+        sA = (OS - CS) / sP;
       }
-      return 0;
+
+      const C = sA - cA;
+
+      return {
+        CS: Math.round(CS),
+        OS: Math.round(OS),
+        sP: sP,
+        cA: Math.round(cA),
+        sA: Math.round(sA),
+        C: C.toFixed(1)
+      };
     }
 
     function processFrame() {
@@ -266,33 +275,25 @@
 
       if (frameCount % 3 !== 0) return; // 3フレームごとに処理
 
-      // ビデオ座標でキャンバスを描画
-      debugCanvas.width = video.videoWidth;
-      debugCanvas.height = video.videoHeight;
-      const ctx = debugCanvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-
-      const imgData = ctx.getImageData(0, 0, video.videoWidth, video.videoHeight);
+      // データ取得用キャンバス（ビデオ解像度）にビデオを描画
+      dataCtx.drawImage(video, 0, 0, VIDEO_SPEC.width, VIDEO_SPEC.height);
+      const imgData = dataCtx.getImageData(0, 0, VIDEO_SPEC.width, VIDEO_SPEC.height);
 
       // ウィンドウサイズ計算
-      const windowSize = Math.round(video.videoWidth * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
+      const windowSize = Math.round(VIDEO_SPEC.width * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
-      // 各固定点でコントラスト計算
-      const contrastValues = {};
+      // 表示用キャンバス（画面解像度）
+      displayCanvas.width = window.innerWidth;
+      displayCanvas.height = window.innerHeight;
+      const dispCtx = displayCanvas.getContext('2d');
+      dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+      // 各固定点でコントラスト計算と表示
+      dispCtx.font = 'bold 13px monospace';
       for (const [key, point] of Object.entries(evaluationPoints)) {
-        const contrast = calculateContrast(imgData, point.x, point.y, windowSize);
-        contrastValues[key] = contrast;
-        console.log(`[${point.label}] コントラスト: ${contrast.toFixed(1)}`);
-      }
+        const contrastValues = calculateContrast(imgData, point.x, point.y, windowSize);
 
-      // 画面上に表示
-      const screenCtx = document.createElement('canvas').getContext('2d');
-      debugCanvas.width = window.innerWidth;
-      debugCanvas.height = window.innerHeight;
-      ctx.clearRect(0, 0, debugCanvas.width, debugCanvas.height);
-
-      ctx.font = 'bold 14px monospace';
-      for (const [key, point] of Object.entries(evaluationPoints)) {
+        // A4座標をビデオ座標、その後画面座標に変換
         const screenPt = videoToScreen(A4_SPEC.videoOriginX + point.x, A4_SPEC.videoOriginY + point.y);
         const screenSize = (point.size / VIDEO_SPEC.width) * video.clientWidth;
 
@@ -302,13 +303,27 @@
         else if (key === 'green') color = 'rgba(0, 255, 100, 0.7)';
         else color = 'rgba(200, 100, 255, 0.7)';
 
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(screenPt.x, screenPt.y, screenSize, screenSize);
+        // 枠を描画
+        dispCtx.strokeStyle = color;
+        dispCtx.lineWidth = 2;
+        dispCtx.strokeRect(screenPt.x, screenPt.y, screenSize, screenSize);
 
-        // コントラスト値を表示
-        ctx.fillStyle = color;
-        ctx.fillText(`${point.label}: ${contrastValues[key].toFixed(1)}`, screenPt.x, screenPt.y - 10);
+        // コントラスト値を表示（5行で詳細情報）
+        dispCtx.fillStyle = color;
+        const lines = [
+          `${point.label}`,
+          `CS=${contrastValues.CS}`,
+          `OS=${contrastValues.OS} | sP=${contrastValues.sP}`,
+          `cA=${contrastValues.cA}`,
+          `sA=${contrastValues.sA}`,
+          `C=${contrastValues.C}`
+        ];
+
+        let y = screenPt.y - 50;
+        for (const line of lines) {
+          dispCtx.fillText(line, screenPt.x, y);
+          y += 16;
+        }
       }
     }
 
@@ -320,14 +335,9 @@
       const tempCtx = tempCanvas.getContext('2d');
 
       // ビデオからA4領域を切り抜き
-      const srcX = A4_SPEC.videoOriginX;
-      const srcY = A4_SPEC.videoOriginY;
-      const scaleX = video.clientWidth / video.videoWidth;
-      const scaleY = video.clientHeight / video.videoHeight;
-
       tempCtx.drawImage(
         video,
-        srcX, srcY, A4_SPEC.width, A4_SPEC.height,
+        A4_SPEC.videoOriginX, A4_SPEC.videoOriginY, A4_SPEC.width, A4_SPEC.height,
         0, 0, A4_SPEC.width, A4_SPEC.height
       );
 
