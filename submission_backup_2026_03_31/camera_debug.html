@@ -830,9 +830,9 @@
         ctx.lineWidth = 2;
         ctx.strokeRect(fpScreenX, fpScreenY, fpScreenW, fpScreenW);
 
-        // 詳細値を四角の左側上部に表示（背景付き、切れない位置）
-        const textX = Math.max(10, fpScreenX - 150);
-        const textY = Math.max(50, fpScreenY);
+        // 詳細値を四角の下に表示（背景付き、四角と重ならない）
+        const textX = fpScreenX;
+        const textY = fpScreenY + fpScreenW + 15;  // 青四角の下に余白を置く
 
         // 背景ボックス
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
