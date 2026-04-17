@@ -830,13 +830,18 @@
         ctx.lineWidth = 2;
         ctx.strokeRect(fpScreenX, fpScreenY, fpScreenW, fpScreenW);
 
-        // contrast値を四角の下に表示
+        // 詳細値を四角の下に表示
         ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
-        ctx.font = 'bold 13px monospace';
-        ctx.fillText(`Fixed: C=${fp.contrast.toFixed(1)} B=${fp.brightness.toFixed(0)}`, fpScreenX, fpScreenY + fpScreenW + 15);
+        ctx.font = 'bold 11px monospace';
+        let displayY = fpScreenY + fpScreenW + 15;
+        ctx.fillText(`cS=${fp.centerS.toFixed(0)} cA=${fp.centerAvg.toFixed(0)}`, fpScreenX, displayY);
+        displayY += 13;
+        ctx.fillText(`oS=${fp.outerS.toFixed(0)} sP=${fp.surroundPixels.toFixed(0)}`, fpScreenX, displayY);
+        displayY += 13;
+        ctx.fillText(`sA=${fp.surroundAvg.toFixed(0)} C=${fp.contrast.toFixed(1)}`, fpScreenX, displayY);
 
         // コンソールにも出力
-        console.log(`[固定位置] (${fp.x.toFixed(0)},${fp.y.toFixed(0)}) Contrast=${fp.contrast.toFixed(1)} Brightness=${fp.brightness.toFixed(0)}`);
+        console.log(`[固定位置] centerS=${fp.centerS.toFixed(0)} outerS=${fp.outerS.toFixed(0)} surroundPixels=${fp.surroundPixels.toFixed(0)} centerAvg=${fp.centerAvg.toFixed(0)} surroundAvg=${fp.surroundAvg.toFixed(0)} contrast=${fp.contrast.toFixed(1)}`);
       }
     }
 
@@ -914,8 +919,14 @@
           const outerS = rectSum(ox0, oy0, ox1, oy1);
           const surroundPixels = (ox1-ox0)*(oy1-oy0) - (winW*winH);
           if (surroundPixels > 0) {
-            const contrast = (outerS - centerS) / surroundPixels - centerAvg;
-            window.fixedPointDebug = { x: fixedX, y: fixedY, contrast: contrast, brightness: centerAvg };
+            const surroundAvg = (outerS - centerS) / surroundPixels;
+            const contrast = surroundAvg - centerAvg;
+            window.fixedPointDebug = {
+              x: fixedX, y: fixedY,
+              centerS: centerS, centerAvg: centerAvg,
+              outerS: outerS, surroundPixels: surroundPixels, surroundAvg: surroundAvg,
+              contrast: contrast
+            };
           }
         }
       }
