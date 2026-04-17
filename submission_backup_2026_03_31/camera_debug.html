@@ -830,15 +830,23 @@
         ctx.lineWidth = 2;
         ctx.strokeRect(fpScreenX, fpScreenY, fpScreenW, fpScreenW);
 
-        // 詳細値を四角の下に表示
-        ctx.fillStyle = 'rgba(0, 150, 255, 0.9)';
-        ctx.font = 'bold 11px monospace';
-        let displayY = fpScreenY + fpScreenW + 15;
-        ctx.fillText(`cS=${fp.centerS.toFixed(0)} cA=${fp.centerAvg.toFixed(0)}`, fpScreenX, displayY);
-        displayY += 13;
-        ctx.fillText(`oS=${fp.outerS.toFixed(0)} sP=${fp.surroundPixels.toFixed(0)}`, fpScreenX, displayY);
-        displayY += 13;
-        ctx.fillText(`sA=${fp.surroundAvg.toFixed(0)} C=${fp.contrast.toFixed(1)}`, fpScreenX, displayY);
+        // 詳細値を四角の左側上部に表示（背景付き、切れない位置）
+        const textX = Math.max(10, fpScreenX - 150);
+        const textY = Math.max(50, fpScreenY);
+
+        // 背景ボックス
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(textX - 5, textY - 5, 155, 60);
+
+        // テキスト
+        ctx.fillStyle = 'rgba(0, 150, 255, 0.95)';
+        ctx.font = 'bold 10px monospace';
+        let displayY = textY + 12;
+        ctx.fillText(`cS=${fp.centerS.toFixed(0)} cA=${fp.centerAvg.toFixed(0)}`, textX, displayY);
+        displayY += 12;
+        ctx.fillText(`oS=${fp.outerS.toFixed(0)} sP=${fp.surroundPixels.toFixed(0)}`, textX, displayY);
+        displayY += 12;
+        ctx.fillText(`sA=${fp.surroundAvg.toFixed(0)} C=${fp.contrast.toFixed(1)}`, textX, displayY);
 
         // コンソールにも出力
         console.log(`[固定位置] centerS=${fp.centerS.toFixed(0)} outerS=${fp.outerS.toFixed(0)} surroundPixels=${fp.surroundPixels.toFixed(0)} centerAvg=${fp.centerAvg.toFixed(0)} surroundAvg=${fp.surroundAvg.toFixed(0)} contrast=${fp.contrast.toFixed(1)}`);
