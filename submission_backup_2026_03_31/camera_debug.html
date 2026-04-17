@@ -826,6 +826,46 @@
         // コンソールにも出力
         console.log(`[固定位置] centerS=${fp.centerS.toFixed(0)} outerS=${fp.outerS.toFixed(0)} surroundPixels=${fp.surroundPixels.toFixed(0)} centerAvg=${fp.centerAvg.toFixed(0)} surroundAvg=${fp.surroundAvg.toFixed(0)} contrast=${fp.contrast.toFixed(1)}`);
       }
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // BR領域の固定点監視表示
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (window.fixedPointDebugBR && cornerDefs.length > 0) {
+        const brFp = window.fixedPointDebugBR;
+        const brCorner = cornerDefs[0];  // BR
+        // detectCanvas座標 → video座標 → 画面座標
+        const videoScale = video.videoWidth / DETECT_WIDTH;
+        const offset = getCoverOffset(video);
+        const brScreenX = brFp.x * videoScale / offset.scaleX + offset.offsetX;
+        const brScreenY = brFp.y * videoScale / offset.scaleY + offset.offsetY;
+        const winW = Math.max(8, Math.round(DETECT_WIDTH * params.MARKER_SIZE_RATIO));
+        const brScreenW = winW * videoScale / offset.scaleX;
+
+        // BR領域の四角を描画（緑色の枠）
+        ctx.strokeStyle = 'rgba(0, 255, 100, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(brScreenX, brScreenY, brScreenW, brScreenW);
+
+        // 詳細値をテキストのみで表示
+        const brTextX = brScreenX + brScreenW + 10;
+        const brTextY = brScreenY;
+
+        ctx.fillStyle = 'rgba(0, 255, 100, 0.95)';
+        ctx.font = 'bold 11px monospace';
+        let brDisplayY = brTextY;
+        ctx.fillText(`CS=${brFp.centerS.toFixed(0)}`, brTextX, brDisplayY);
+        brDisplayY += 13;
+        ctx.fillText(`OS=${brFp.outerS.toFixed(0)} | sP=${brFp.surroundPixels.toFixed(0)}`, brTextX, brDisplayY);
+        brDisplayY += 13;
+        ctx.fillText(`cA=${brFp.centerAvg.toFixed(0)}`, brTextX, brDisplayY);
+        brDisplayY += 13;
+        ctx.fillText(`sA=${brFp.surroundAvg.toFixed(0)}`, brTextX, brDisplayY);
+        brDisplayY += 13;
+        ctx.fillText(`C=${brFp.contrast.toFixed(1)}`, brTextX, brDisplayY);
+
+        // コンソールにも出力
+        console.log(`[BR領域固定点] centerS=${brFp.centerS.toFixed(0)} outerS=${brFp.outerS.toFixed(0)} surroundPixels=${brFp.surroundPixels.toFixed(0)} centerAvg=${brFp.centerAvg.toFixed(0)} surroundAvg=${brFp.surroundAvg.toFixed(0)} contrast=${brFp.contrast.toFixed(1)}`);
+      }
     }
 
     function autoShutterLoop() {
@@ -979,6 +1019,49 @@
 
       // プリプロセス（1 回のみ）
       const { gray, integ, W1 } = preprocessImage(imgData, detectCanvas.width, detectCanvas.height);
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // BR領域の中央での固定点 contrast 計算
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (cornerDefs.length > 0) {
+        const brCorner = cornerDefs[0];  // BR領域
+        const brCenterX = brCorner.rx + rangeW / 2;
+        const brCenterY = brCorner.ry + rangeH / 2;
+        const winW = Math.max(8, Math.round(detectCanvas.width * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO));
+        const winH = Math.max(8, Math.round(detectCanvas.height * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO));
+        const margin = Math.max(4, Math.round(winW * MARKER_DETECT_PARAMS.MARGIN_RATIO));
+
+        function rectSum(x0, y0, x1, y1) {
+          x0 = Math.max(0, x0); y0 = Math.max(0, y0);
+          x1 = Math.min(detectCanvas.width, x1); y1 = Math.min(detectCanvas.height, y1);
+          if (x0 >= x1 || y0 >= y1) return 0;
+          return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
+        }
+
+        const brFixedX = Math.floor(brCenterX - winW / 2);
+        const brFixedY = Math.floor(brCenterY - winH / 2);
+
+        if (brFixedX >= 0 && brFixedY >= 0 && brFixedX + winW <= detectCanvas.width && brFixedY + winH <= detectCanvas.height) {
+          const brCenterS = rectSum(brFixedX, brFixedY, brFixedX + winW, brFixedY + winH);
+          const brCenterAvg = brCenterS / (winW * winH);
+          const brOx0 = Math.max(0, brFixedX - margin);
+          const brOy0 = Math.max(0, brFixedY - margin);
+          const brOx1 = Math.min(detectCanvas.width, brFixedX + winW + margin);
+          const brOy1 = Math.min(detectCanvas.height, brFixedY + winH + margin);
+          const brOuterS = rectSum(brOx0, brOy0, brOx1, brOy1);
+          const brSurroundPixels = (brOx1-brOx0)*(brOy1-brOy0) - (winW*winH);
+          if (brSurroundPixels > 0) {
+            const brSurroundAvg = (brOuterS - brCenterS) / brSurroundPixels;
+            const brContrast = brSurroundAvg - brCenterAvg;
+            window.fixedPointDebugBR = {
+              x: brFixedX, y: brFixedY,
+              centerS: brCenterS, centerAvg: brCenterAvg,
+              outerS: brOuterS, surroundPixels: brSurroundPixels, surroundAvg: brSurroundAvg,
+              contrast: brContrast
+            };
+          }
+        }
+      }
 
       // 4 領域スキャン
       const detectedPts = [];
