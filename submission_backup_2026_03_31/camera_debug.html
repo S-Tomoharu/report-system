@@ -813,11 +813,15 @@
         ctx.fillStyle = 'rgba(0, 150, 255, 0.95)';
         ctx.font = 'bold 11px monospace';
         let displayY = textY;
-        ctx.fillText(`cS=${fp.centerS.toFixed(0)} cA=${fp.centerAvg.toFixed(0)}`, textX, displayY);
-        displayY += 12;
-        ctx.fillText(`oS=${fp.outerS.toFixed(0)} sP=${fp.surroundPixels.toFixed(0)}`, textX, displayY);
-        displayY += 12;
-        ctx.fillText(`sA=${fp.surroundAvg.toFixed(0)} C=${fp.contrast.toFixed(1)}`, textX, displayY);
+        ctx.fillText(`CS=${fp.centerS.toFixed(0)}`, textX, displayY);
+        displayY += 13;
+        ctx.fillText(`OS=${fp.outerS.toFixed(0)} | sP=${fp.surroundPixels.toFixed(0)}`, textX, displayY);
+        displayY += 13;
+        ctx.fillText(`cA=${fp.centerAvg.toFixed(0)}`, textX, displayY);
+        displayY += 13;
+        ctx.fillText(`sA=${fp.surroundAvg.toFixed(0)}`, textX, displayY);
+        displayY += 13;
+        ctx.fillText(`C=${fp.contrast.toFixed(1)}`, textX, displayY);
 
         // コンソールにも出力
         console.log(`[固定位置] centerS=${fp.centerS.toFixed(0)} outerS=${fp.outerS.toFixed(0)} surroundPixels=${fp.surroundPixels.toFixed(0)} centerAvg=${fp.centerAvg.toFixed(0)} surroundAvg=${fp.surroundAvg.toFixed(0)} contrast=${fp.contrast.toFixed(1)}`);
