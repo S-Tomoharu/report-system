@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-026';
+    const VERSION = '20260418-027';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -161,6 +161,7 @@
     // ========== アニメーション管理 ==========
     let animId = null;
     let frameCount = 0;
+    let debugInfo = {};
 
     // ========== エラー表示 ==========
     function showError(msg) {
@@ -393,15 +394,15 @@
         // コントラスト計算
         const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, MARKER_DETECT_PARAMS);
 
-        // デバッグ：緑の点の情報をコンソール出力
+        // デバッグ：緑の点の情報を保存（画面表示用）
         if (key === 'green') {
-          console.log(`[DEBUG] ${point.label}:`, {
+          debugInfo = {
             a4X: point.a4X, a4Y: point.a4Y,
-            videoPt: videoPt,
+            videoX: videoPt.x.toFixed(1), videoY: videoPt.y.toFixed(1),
             windowSize: windowSize,
-            contrast: contrast,
-            imgData_length: imgData.data.length
-          });
+            CS: contrast.CS, OS: contrast.OS, sP: contrast.sP,
+            cA: contrast.cA, sA: contrast.sA, C: contrast.C
+          };
         }
 
         // A4座標 → 画面座標（表示用）
@@ -461,6 +462,21 @@
       for (const line of paramText) {
         dispCtx.fillText(line, 10, paramY);
         paramY += 20;
+      }
+
+      // ========== デバッグ情報（緑の点）を表示 ==========
+      const debugText = [
+        `[DEBUG GREEN]`,
+        `A4(${debugInfo.a4X}, ${debugInfo.a4Y}) -> Video(${debugInfo.videoX}, ${debugInfo.videoY})`,
+        `windowSize: ${debugInfo.windowSize}`,
+        `CS=${debugInfo.CS}, OS=${debugInfo.OS}, sP=${debugInfo.sP}`,
+        `cA=${debugInfo.cA}, sA=${debugInfo.sA}, C=${debugInfo.C}`
+      ];
+      let debugY = paramY + 20;
+      dispCtx.fillStyle = 'rgba(0, 255, 100, 0.9)';
+      for (const line of debugText) {
+        dispCtx.fillText(line, 10, debugY);
+        debugY += 20;
       }
     }
 
