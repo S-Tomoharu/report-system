@@ -1,6 +1,7 @@
 # 開発用ファイル（ローカルで管理）
 *.gs
 *.md
+!COORDINATE_SYSTEM_SPEC.md
 config.js
 config.local.js
 config.template.js
