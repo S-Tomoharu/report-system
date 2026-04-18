@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-020';
+    const VERSION = '20260418-021';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -440,7 +440,8 @@
 
       const rect = video.getBoundingClientRect();
       const paramText = [
-        `window.innerWidth: ${window.innerWidth}, window.innerHeight: ${window.innerHeight}`,
+        `window.innerWidth: ${window.innerWidth}`,
+        `window.innerHeight: ${window.innerHeight}`,
         `MARKER_SIZE_RATIO: ${MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO.toFixed(3)}`,
         `MARGIN_RATIO: ${MARKER_DETECT_PARAMS.MARGIN_RATIO.toFixed(1)}`,
         `VIDEO_SCALE: ${MARKER_DETECT_PARAMS.VIDEO_SCALE.toFixed(2)}`,
