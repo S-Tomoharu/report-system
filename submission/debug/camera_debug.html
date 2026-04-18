@@ -111,122 +111,76 @@
 
     console.log('[camera_debug] Script started, version:', VERSION);
 
+    // ========== DOM要素 ==========
     const video = document.getElementById('video');
     const displayCanvas = document.getElementById('displayCanvas');
     const captureBtn = document.getElementById('captureBtn');
     const closeBtn = document.getElementById('closeBtn');
     const errorDiv = document.getElementById('error');
 
-    console.log('[camera_debug] DOM elements loaded:', { video, displayCanvas, captureBtn });
+    // ========== 仕様書の値（固定） ==========
+    const A4_WIDTH = 1080;
+    const A4_HEIGHT = 1527;
 
-    // A4座標系の仕様（正規化）
-    const A4_SPEC = {
-      width: 1080,
-      height: 1527
+    const EVALUATION_POINTS = {
+      blue: { a4X: 540, a4Y: 763.5, label: '青' },
+      green: { a4X: 1033, a4Y: 1480, label: '緑' },
+      purple: { a4X: 1033, a4Y: 763.5, label: '紫' }
     };
 
-    // 固定評価点（A4座標系）
-    const evaluationPoints = {
-      blue: { x: 540, y: 763.5, size: 94, label: '青' },
-      green: { x: 1033, y: 1480, size: 94, label: '緑' },
-      purple: { x: 1033, y: 763.5, size: 94, label: '紫' }
-    };
-
-    // パラメータ（marker_debugから受け取る）
+    // ========== パラメータ ==========
     let MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.038,
       MARGIN_RATIO: 0.5
     };
 
+    // ========== キャンバス ==========
+    const dataCanvas = document.createElement('canvas');
+    const dataCtx = dataCanvas.getContext('2d');
+
+    // ========== アニメーション管理 ==========
     let animId = null;
     let frameCount = 0;
 
-    // データ取得用キャンバス（ビデオ解像度、画面には表示しない）
-    // 初期サイズは1フレーム目で動的に設定される
-    const dataCanvas = document.createElement('canvas');
-    dataCanvas.width = 1;
-    dataCanvas.height = 1;
-    const dataCtx = dataCanvas.getContext('2d');
-
+    // ========== エラー表示 ==========
     function showError(msg) {
+      console.error('[camera_debug] Error:', msg);
       errorDiv.textContent = msg;
       errorDiv.style.display = 'block';
     }
 
-    // ビデオを取得
-    async function startCamera() {
-      try {
-        console.log('[camera_debug] startCamera: checking navigator.mediaDevices');
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error('getUserMedia not supported');
-        }
-
-        console.log('[camera_debug] startCamera: requesting camera access');
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 4000 },
-            height: { ideal: 6000 }
-          }
-        });
-
-        console.log('[camera_debug] startCamera: stream obtained, videoTracks:', stream.getVideoTracks());
-
-        video.addEventListener('loadedmetadata', () => {
-          console.log('[camera_debug] video loadedmetadata event fired');
-          processFrame();
-        }, { once: true });
-
-        video.srcObject = stream;
-        console.log('[camera_debug] startCamera: calling video.play()');
-        await video.play();
-        console.log('[camera_debug] startCamera: video playing');
-      } catch (err) {
-        console.error('[camera_debug] startCamera error:', err.name, err.message);
-        showError('カメラを起動できませんでした: ' + err.message);
-      }
-    }
-
-    // A4座標 → ビデオ座標（A4座標系はビデオ座標の中央に配置）
+    // ========== 座標変換: A4座標 → ビデオ座標 ==========
     function a4ToVideo(a4X, a4Y, videoW, videoH) {
-      const offsetX = (videoW - A4_SPEC.width) / 2;
-      const offsetY = (videoH - A4_SPEC.height) / 2;
+      const offsetX = (videoW - A4_WIDTH) / 2;
+      const offsetY = (videoH - A4_HEIGHT) / 2;
       return {
         x: offsetX + a4X,
         y: offsetY + a4Y
       };
     }
 
-    // ビデオ座標 → 画面座標
+    // ========== 座標変換: ビデオ座標 → 画面座標 ==========
     function videoToScreen(videoX, videoY) {
-      const scaleX = video.clientWidth / video.videoWidth;
-      const scaleY = video.clientHeight / video.videoHeight;
-
-      // ビデオがレターボックスで表示されている場合のオフセット計算
-      const offsetX = (video.clientWidth - video.videoWidth * scaleX) / 2;
-      const offsetY = (video.clientHeight - video.videoHeight * scaleY) / 2;
-
+      const rect = video.getBoundingClientRect();
+      const scale = Math.min(rect.width / video.videoWidth, rect.height / video.videoHeight);
       return {
-        x: offsetX + videoX * scaleX,
-        y: offsetY + videoY * scaleY
+        x: rect.left + videoX * scale,
+        y: rect.top + videoY * scale
       };
     }
 
-    // コントラスト計算（詳細値を返す）
-    // videoPt: ビデオ座標の位置
-    function calculateContrast(imgData, videoX, videoY, windowSize) {
+    // ========== コントラスト計算 ==========
+    function calculateContrast(imgData, videoX, videoY, windowSize, videoW, videoH) {
       const d = imgData.data;
-      const videoW = video.videoWidth;
-      const videoH = video.videoHeight;
 
-      // グレースケール変換（最初の1フレームのみ）
+      // グレースケール変換
       const gray = new Uint8Array(videoW * videoH);
       for (let i = 0; i < videoW * videoH; i++) {
         const p = i * 4;
         gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
       }
 
-      // 積分画像（最初の1フレームのみ）
+      // 積分画像構築
       const W1 = videoW + 1;
       const integ = new Int32Array((videoH + 1) * W1);
       for (let y = 1; y <= videoH; y++) {
@@ -236,149 +190,191 @@
         }
       }
 
+      // 矩形領域の合計を高速計算
       function rectSum(x0, y0, x1, y1) {
-        x0 = Math.max(0, x0); y0 = Math.max(0, y0);
-        x1 = Math.min(videoW, x1); y1 = Math.min(videoH, y1);
+        x0 = Math.max(0, x0);
+        y0 = Math.max(0, y0);
+        x1 = Math.min(videoW, x1);
+        y1 = Math.min(videoH, y1);
         if (x0 >= x1 || y0 >= y1) return 0;
         return integ[y1*W1+x1] - integ[y0*W1+x1] - integ[y1*W1+x0] + integ[y0*W1+x0];
       }
 
-      // ビデオ座標で計算
+      // 中央ウィンドウ
       const vX = Math.round(videoX);
       const vY = Math.round(videoY);
+      const centerS = rectSum(vX, vY, vX + windowSize, vY + windowSize);
+      const cA = centerS / (windowSize * windowSize);
 
-      // 中央部分のコントラスト
-      const CS = rectSum(vX, vY, vX + windowSize, vY + windowSize);
-      const cA = CS / (windowSize * windowSize);
-
+      // 周辺ウィンドウ
       const margin = Math.round(windowSize * MARKER_DETECT_PARAMS.MARGIN_RATIO);
       const ox0 = vX - margin;
       const oy0 = vY - margin;
       const ox1 = vX + windowSize + margin;
       const oy1 = vY + windowSize + margin;
-
-      const OS = rectSum(ox0, oy0, ox1, oy1);
+      const outerS = rectSum(ox0, oy0, ox1, oy1);
       const sP = (ox1-ox0)*(oy1-oy0) - (windowSize*windowSize);
-
-      let sA = 0;
-      if (sP > 0) {
-        sA = (OS - CS) / sP;
-      }
-
-      const C = sA - cA;
+      const sA = sP > 0 ? (outerS - centerS) / sP : 0;
 
       return {
-        CS: Math.round(CS),
-        OS: Math.round(OS),
+        CS: Math.round(centerS),
+        OS: Math.round(outerS),
         sP: sP,
         cA: Math.round(cA),
         sA: Math.round(sA),
-        C: C.toFixed(1)
+        C: (sA - cA).toFixed(1)
       };
     }
 
+    // ========== カメラ起動 ==========
+    async function startCamera() {
+      try {
+        console.log('[camera_debug] Requesting camera access...');
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('getUserMedia not supported');
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 4000 },
+            height: { ideal: 6000 }
+          }
+        });
+
+        console.log('[camera_debug] Stream obtained');
+
+        video.addEventListener('loadedmetadata', () => {
+          console.log(`[camera_debug] Video ready: ${video.videoWidth}×${video.videoHeight}`);
+          processFrame();
+        }, { once: true });
+
+        video.srcObject = stream;
+        await video.play();
+        console.log('[camera_debug] Video playing');
+      } catch (err) {
+        showError('カメラを起動できませんでした: ' + err.message);
+      }
+    }
+
+    // ========== フレーム処理 ==========
     function processFrame() {
       if (!video.srcObject) return;
 
       animId = requestAnimationFrame(processFrame);
       frameCount++;
 
-      if (frameCount % 3 !== 0) return; // 3フレームごとに処理
+      if (frameCount % 3 !== 0) return; // 3フレームごと
 
-      // 実際のビデオ解像度を取得
       const videoW = video.videoWidth;
       const videoH = video.videoHeight;
 
       if (videoW === 0 || videoH === 0) return;
 
-      // データ取得用キャンバスがまだ正しいサイズでなければリサイズ
+      // データキャンバスをリサイズ
       if (dataCanvas.width !== videoW || dataCanvas.height !== videoH) {
-        console.log(`[camera_debug] Resizing dataCanvas from ${dataCanvas.width}×${dataCanvas.height} to ${videoW}×${videoH}`);
+        console.log(`[camera_debug] Resizing dataCanvas to ${videoW}×${videoH}`);
         dataCanvas.width = videoW;
         dataCanvas.height = videoH;
       }
 
-      // データ取得用キャンバス（ビデオ解像度）にビデオを描画
+      // ビデオからピクセルデータ取得
       dataCtx.drawImage(video, 0, 0, videoW, videoH);
       const imgData = dataCtx.getImageData(0, 0, videoW, videoH);
 
-      // ウィンドウサイズ計算（ビデオ幅に対する比率）
-      const windowSize = Math.round(videoW * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
+      // ウィンドウサイズ計算（A4座標系の幅に対する比率）
+      const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
-      // 表示用キャンバス（画面解像度）
+      // 表示用キャンバス初期化
       displayCanvas.width = window.innerWidth;
       displayCanvas.height = window.innerHeight;
       const dispCtx = displayCanvas.getContext('2d');
       dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
 
-      // 各固定点でコントラスト計算と表示
+      // 各評価点を処理
       dispCtx.font = 'bold 13px monospace';
-      for (const [key, point] of Object.entries(evaluationPoints)) {
-        const videoPt = a4ToVideo(point.x, point.y, videoW, videoH);
-        const contrastValues = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize);
+      for (const [key, point] of Object.entries(EVALUATION_POINTS)) {
+        // A4座標 → ビデオ座標
+        const videoPt = a4ToVideo(point.a4X, point.a4Y, videoW, videoH);
 
-        // A4座標をビデオ座標、その後画面座標に変換
+        // コントラスト計算
+        const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH);
+
+        // ビデオ座標 → 画面座標
         const screenPt = videoToScreen(videoPt.x, videoPt.y);
-        const screenSize = (point.size / videoW) * video.clientWidth;
 
-        // 色を決定
+        // 画面での描画サイズ
+        const rect = video.getBoundingClientRect();
+        const scale = Math.min(rect.width / videoW, rect.height / videoH);
+        const screenWindowSize = windowSize * scale;
+
+        // 色決定
         let color;
         if (key === 'blue') color = 'rgba(0, 150, 255, 0.7)';
         else if (key === 'green') color = 'rgba(0, 255, 100, 0.7)';
         else color = 'rgba(200, 100, 255, 0.7)';
 
-        // 枠を描画
+        // 枠描画
         dispCtx.strokeStyle = color;
         dispCtx.lineWidth = 2;
-        dispCtx.strokeRect(screenPt.x, screenPt.y, screenSize, screenSize);
+        dispCtx.strokeRect(screenPt.x, screenPt.y, screenWindowSize, screenWindowSize);
 
-        // コントラスト値を表示（5行で詳細情報）
+        // テキスト描画
         dispCtx.fillStyle = color;
         const lines = [
-          `${point.label}`,
-          `CS=${contrastValues.CS}`,
-          `OS=${contrastValues.OS} | sP=${contrastValues.sP}`,
-          `cA=${contrastValues.cA}`,
-          `sA=${contrastValues.sA}`,
-          `C=${contrastValues.C}`
+          point.label,
+          `CS=${contrast.CS}`,
+          `OS=${contrast.OS} | sP=${contrast.sP}`,
+          `cA=${contrast.cA}`,
+          `sA=${contrast.sA}`,
+          `C=${contrast.C}`
         ];
 
-        let y = screenPt.y - 50;
+        let textY = screenPt.y - 50;
         for (const line of lines) {
-          dispCtx.fillText(line, screenPt.x, y);
-          y += 16;
+          dispCtx.fillText(line, screenPt.x, textY);
+          textY += 16;
         }
       }
     }
 
+    // ========== 撮影 ==========
     captureBtn.addEventListener('click', () => {
-      // A4領域をトリミングして撮影
+      console.log('[camera_debug] Capture button clicked');
+
+      // A4領域をトリミング
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = A4_SPEC.width;
-      tempCanvas.height = A4_SPEC.height;
+      tempCanvas.width = A4_WIDTH;
+      tempCanvas.height = A4_HEIGHT;
       const tempCtx = tempCanvas.getContext('2d');
 
-      // ビデオからA4領域を切り抜き
+      const videoW = video.videoWidth;
+      const videoH = video.videoHeight;
+      const offsetX = (videoW - A4_WIDTH) / 2;
+      const offsetY = (videoH - A4_HEIGHT) / 2;
+
       tempCtx.drawImage(
         video,
-        A4_SPEC.videoOriginX, A4_SPEC.videoOriginY, A4_SPEC.width, A4_SPEC.height,
-        0, 0, A4_SPEC.width, A4_SPEC.height
+        offsetX, offsetY, A4_WIDTH, A4_HEIGHT,
+        0, 0, A4_WIDTH, A4_HEIGHT
       );
 
       const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
 
-      // marker_debugに画像を送信
+      // opener に通知
       if (window.opener && window.opener.displayCapturedImage) {
         window.opener.displayCapturedImage(imageSrc);
       }
 
-      // 自動で閉じる
+      // 自動クローズ
       setTimeout(() => {
         window.close();
       }, 1000);
     });
 
+    // ========== 閉じる ==========
     closeBtn.addEventListener('click', () => {
+      console.log('[camera_debug] Close button clicked');
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
       }
@@ -392,9 +388,9 @@
       }
     });
 
-    console.log('[camera_debug] Script initialization complete, calling startCamera()');
+    // ========== 初期化 ==========
+    console.log('[camera_debug] Initialization complete');
     startCamera();
-    console.log('[camera_debug] startCamera() called');
   </script>
 </body>
 </html>

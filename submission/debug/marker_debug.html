@@ -130,23 +130,27 @@
       opacity: 0.7;
     }
 
-    #capturedImage {
-      margin-top: 30px;
-      max-width: 100%;
-      border-radius: 8px;
-    }
-
     .image-container {
       margin-top: 30px;
       background: #2a2a2a;
       padding: 20px;
       border-radius: 8px;
+      display: none;
+    }
+
+    .image-container.active {
+      display: block;
     }
 
     .image-container h2 {
       font-size: 16px;
       margin-bottom: 15px;
       color: #4a9eff;
+    }
+
+    #capturedImage {
+      max-width: 100%;
+      border-radius: 8px;
     }
   </style>
 </head>
@@ -162,8 +166,8 @@
     </div>
     <input type="range" id="markerSizeSlider" min="0.01" max="0.1" step="0.001" value="0.038">
     <div class="info-box">
-      検出対象のマーカーサイズ。A4座標系の幅に対する比率。<br>
-      0.038 = 約8mm（デフォルト）
+      A4座標系の幅に対するウィンドウサイズの比率。<br>
+      0.038 × 1080 ≈ 41px
     </div>
   </div>
 
@@ -174,8 +178,8 @@
     </div>
     <input type="range" id="marginSlider" min="0" max="2" step="0.1" value="0.5">
     <div class="info-box">
-      マーカー周囲の余白比率。マーカーサイズに対する倍率。<br>
-      0.5 = マーカーサイズの50%
+      ウィンドウ周辺の余白比率。ウィンドウサイズに対する倍率。<br>
+      0.5 = ウィンドウサイズの50%
     </div>
   </div>
 
@@ -184,7 +188,7 @@
     <button id="closeBtn">閉じる</button>
   </div>
 
-  <div class="image-container" id="imageContainer" style="display: none;">
+  <div class="image-container" id="imageContainer">
     <h2>撮影済み画像</h2>
     <img id="capturedImage" alt="撮影済み画像">
   </div>
@@ -193,6 +197,9 @@
     const VERSION = '20260419-008';
     document.getElementById('version').textContent = `v${VERSION}`;
 
+    console.log('[marker_debug] Script started, version:', VERSION);
+
+    // ========== DOM要素 ==========
     const markerSizeSlider = document.getElementById('markerSizeSlider');
     const marginSlider = document.getElementById('marginSlider');
     const markerSizeValue = document.getElementById('markerSizeValue');
@@ -202,7 +209,7 @@
     const imageContainer = document.getElementById('imageContainer');
     const capturedImage = document.getElementById('capturedImage');
 
-    // パラメータ
+    // ========== パラメータ ==========
     const PARAMS = {
       MARKER_SIZE_RATIO: 0.038,
       MARGIN_RATIO: 0.5
@@ -210,47 +217,49 @@
 
     let cameraWindow = null;
 
+    // ========== 表示更新 ==========
     function updateDisplay() {
       markerSizeValue.textContent = PARAMS.MARKER_SIZE_RATIO.toFixed(3);
       marginValue.textContent = PARAMS.MARGIN_RATIO.toFixed(1);
     }
 
+    // ========== パラメータ変更イベント ==========
     markerSizeSlider.addEventListener('input', (e) => {
       PARAMS.MARKER_SIZE_RATIO = parseFloat(e.target.value);
       updateDisplay();
-      // camera_debugウィンドウが開いていれば更新
       if (cameraWindow && !cameraWindow.closed) {
         cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+        console.log('[marker_debug] Updated MARKER_SIZE_RATIO:', PARAMS.MARKER_SIZE_RATIO);
       }
     });
 
     marginSlider.addEventListener('input', (e) => {
       PARAMS.MARGIN_RATIO = parseFloat(e.target.value);
       updateDisplay();
-      // camera_debugウィンドウが開いていれば更新
       if (cameraWindow && !cameraWindow.closed) {
         cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+        console.log('[marker_debug] Updated MARGIN_RATIO:', PARAMS.MARGIN_RATIO);
       }
     });
 
+    // ========== カメラウィンドウ操作 ==========
     openCameraBtn.addEventListener('click', () => {
-      console.log('[marker_debug] Opening camera window');
+      console.log('[marker_debug] Open camera button clicked');
       if (cameraWindow && !cameraWindow.closed) {
         console.log('[marker_debug] Camera window already open, focusing');
         cameraWindow.focus();
       } else {
-        console.log('[marker_debug] Creating new camera window');
+        console.log('[marker_debug] Opening new camera window');
         cameraWindow = window.open(
           './camera_debug.html',
           'cameraWindow',
           'width=390,height=844'
         );
         if (cameraWindow) {
-          console.log('[marker_debug] Camera window created, setting up communication');
           setTimeout(() => {
             cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
-            cameraWindow.captureCallback = displayCapturedImage;
-            console.log('[marker_debug] Parameters passed to camera window');
+            cameraWindow.displayCapturedImage = displayCapturedImage;
+            console.log('[marker_debug] Camera window initialized with parameters');
           }, 500);
         } else {
           console.error('[marker_debug] Failed to open camera window');
@@ -259,19 +268,23 @@
     });
 
     closeBtn.addEventListener('click', () => {
+      console.log('[marker_debug] Close button clicked');
       if (cameraWindow && !cameraWindow.closed) {
         cameraWindow.close();
       }
       window.close();
     });
 
-    // camera_debugから画像を受け取る
+    // ========== 撮影画像受け取り ==========
     window.displayCapturedImage = function(imageSrc) {
+      console.log('[marker_debug] Received captured image');
       capturedImage.src = imageSrc;
-      imageContainer.style.display = 'block';
+      imageContainer.classList.add('active');
     };
 
+    // ========== 初期化 ==========
     updateDisplay();
+    console.log('[marker_debug] Initialization complete');
   </script>
 </body>
 </html>
