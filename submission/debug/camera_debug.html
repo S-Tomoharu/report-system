@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-030';
+    const VERSION = '20260418-031';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -153,6 +153,10 @@
     }
 
     console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
+
+    // ========== ビデオ解像度（初回取得後は固定） ==========
+    let videoW = 0;
+    let videoH = 0;
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
@@ -269,7 +273,16 @@
 
         console.log('[camera_debug] Setting up loadedmetadata listener');
         video.addEventListener('loadedmetadata', () => {
-          console.log(`[camera_debug] loadedmetadata event fired! Video: ${video.videoWidth}×${video.videoHeight}`);
+          // ビデオ解像度を一度だけ取得（初回のみ）
+          videoW = video.videoWidth;
+          videoH = video.videoHeight;
+
+          // 機種依存対応：小さいほうを W、大きいほうを H に統一
+          if (videoW > videoH) {
+            [videoW, videoH] = [videoH, videoW];
+          }
+
+          console.log(`[camera_debug] loadedmetadata event fired! Video: ${videoW}×${videoH}`);
           processFrame();
         }, { once: true });
 
@@ -281,6 +294,15 @@
         // fallback: loadedmetadata が発火しない場合
         setTimeout(() => {
           if (video.videoWidth > 0 && !animId) {
+            // ビデオ解像度を一度だけ取得（初回のみ）
+            videoW = video.videoWidth;
+            videoH = video.videoHeight;
+
+            // 機種依存対応：小さいほうを W、大きいほうを H に統一
+            if (videoW > videoH) {
+              [videoW, videoH] = [videoH, videoW];
+            }
+
             console.log('[camera_debug] Fallback: loadedmetadata not fired, calling processFrame() manually');
             processFrame();
           }
@@ -299,15 +321,7 @@
 
       if (frameCount % 3 !== 0) return; // 3フレームごと
 
-      let videoW = video.videoWidth;
-      let videoH = video.videoHeight;
-
       if (videoW === 0 || videoH === 0) return;
-
-      // 機種依存対応：小さいほうを W、大きいほうを H に統一
-      if (videoW > videoH) {
-        [videoW, videoH] = [videoH, videoW];
-      }
 
       // データキャンバスをリサイズ
       if (dataCanvas.width !== videoW || dataCanvas.height !== videoH) {
