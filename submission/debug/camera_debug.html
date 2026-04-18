@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-015';
+    const VERSION = '20260418-016';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -296,7 +296,6 @@
 
       // データキャンバスをリサイズ
       if (dataCanvas.width !== videoW || dataCanvas.height !== videoH) {
-        console.log(`[camera_debug] Resizing dataCanvas to ${videoW}×${videoH}`);
         dataCanvas.width = videoW;
         dataCanvas.height = videoH;
       }
@@ -365,8 +364,6 @@
         const videoPt = a4ToVideo(pt.a4X, pt.a4Y, videoW, videoH);
         const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, MARKER_DETECT_PARAMS);
 
-        console.log(`[DEBUG] ${pt.label}: A4(${pt.a4X}, ${pt.a4Y}) -> Video(${videoPt.x.toFixed(1)}, ${videoPt.y.toFixed(1)}) -> Screen(${screenPt.x.toFixed(1)}, ${screenPt.y.toFixed(1)})`);
-
         // 点を描画
         dispCtx.fillStyle = pt.color;
         dispCtx.beginPath();
@@ -422,11 +419,25 @@
           textY += 16;
         }
       }
+
+      // ========== MARKER_DETECT_PARAMS を画面上に表示 ==========
+      dispCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      dispCtx.font = 'bold 14px monospace';
+      const paramText = [
+        `MARKER_SIZE_RATIO: ${MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO.toFixed(3)}`,
+        `MARGIN_RATIO: ${MARKER_DETECT_PARAMS.MARGIN_RATIO.toFixed(1)}`,
+        `VIDEO_SCALE: ${MARKER_DETECT_PARAMS.VIDEO_SCALE.toFixed(2)}`,
+        `VIDEO_OFFSET_Y: ${MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y.toFixed(0)}`
+      ];
+      let paramY = 20;
+      for (const line of paramText) {
+        dispCtx.fillText(line, 10, paramY);
+        paramY += 20;
+      }
     }
 
     // ========== 撮影 ==========
     captureBtn.addEventListener('click', () => {
-      console.log('[camera_debug] Capture button clicked');
 
       // A4領域をトリミング
       const tempCanvas = document.createElement('canvas');
@@ -460,7 +471,6 @@
 
     // ========== 閉じる ==========
     closeBtn.addEventListener('click', () => {
-      console.log('[camera_debug] Close button clicked');
       if (video.srcObject) {
         video.srcObject.getTracks().forEach(track => track.stop());
       }
@@ -475,7 +485,6 @@
     });
 
     // ========== 初期化 ==========
-    console.log('[camera_debug] Initialization complete');
     startCamera();
   </script>
 </body>
