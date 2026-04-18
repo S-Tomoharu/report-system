@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-043';
+    const VERSION = '20260418-044';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -426,7 +426,9 @@
       // 各矩形を黄色い枠で描画
       dispCtx.strokeStyle = 'yellow';
       dispCtx.lineWidth = 2;
-      for (const rectCorners of detectionRects) {
+      const labels = ['TL', 'TR', 'BR', 'BL'];
+      for (let i = 0; i < detectionRects.length; i++) {
+        const rectCorners = detectionRects[i];
         const screenCorners = [];
         for (const corner of rectCorners) {
           const screenPt = a4ToScreen(corner.a4X, corner.a4Y, displayScale, MARKER_DETECT_PARAMS);
@@ -440,6 +442,15 @@
         dispCtx.lineTo(screenCorners[3].x, screenCorners[3].y);
         dispCtx.closePath();
         dispCtx.stroke();
+
+        // 矩形の中心にラベルを描画
+        const centerX = (screenCorners[0].x + screenCorners[1].x + screenCorners[2].x + screenCorners[3].x) / 4;
+        const centerY = (screenCorners[0].y + screenCorners[1].y + screenCorners[2].y + screenCorners[3].y) / 4;
+        dispCtx.fillStyle = 'yellow';
+        dispCtx.font = 'bold 16px monospace';
+        dispCtx.textAlign = 'center';
+        dispCtx.textBaseline = 'middle';
+        dispCtx.fillText(labels[i], centerX, centerY);
       }
 
       // ========== 各評価点を処理 ==========
