@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-044';
+    const VERSION = '20260418-045';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -455,6 +455,8 @@
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
+      dispCtx.textAlign = 'left';
+      dispCtx.textBaseline = 'top';
       for (const [key, point] of Object.entries(EVALUATION_POINTS)) {
         // A4座標 → ビデオ座標（評価計算用）
         const videoPt = a4ToVideo(point.a4X, point.a4Y, videoW, videoH);
