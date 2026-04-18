@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260419-009';
+    const VERSION = '20260418-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -291,7 +291,32 @@
       const dispCtx = displayCanvas.getContext('2d');
       dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
 
-      // 各評価点を処理
+      // ========== A4座標系の四隅と中央点をデバッグ表示 ==========
+      const debugPoints = [
+        { a4X: 0, a4Y: 0, label: '左上(0,0)', color: 'red' },
+        { a4X: 1080, a4Y: 0, label: '右上(1080,0)', color: 'lime' },
+        { a4X: 1080, a4Y: 1527, label: '右下(1080,1527)', color: 'cyan' },
+        { a4X: 0, a4Y: 1527, label: '左下(0,1527)', color: 'magenta' },
+        { a4X: 540, a4Y: 763.5, label: '中央(540,763.5)', color: 'yellow' }
+      ];
+
+      for (const pt of debugPoints) {
+        const videoPt = a4ToVideo(pt.a4X, pt.a4Y, videoW, videoH);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y);
+
+        // 点を描画
+        dispCtx.fillStyle = pt.color;
+        dispCtx.beginPath();
+        dispCtx.arc(screenPt.x, screenPt.y, 8, 0, 2 * Math.PI);
+        dispCtx.fill();
+
+        // ラベル描画
+        dispCtx.fillStyle = pt.color;
+        dispCtx.font = 'bold 12px monospace';
+        dispCtx.fillText(pt.label, screenPt.x + 12, screenPt.y - 8);
+      }
+
+      // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
       for (const [key, point] of Object.entries(EVALUATION_POINTS)) {
         // A4座標 → ビデオ座標
