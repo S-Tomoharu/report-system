@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-041';
+    const VERSION = '20260418-042';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -381,6 +381,30 @@
       dispCtx.lineTo(screenCorners[3].x, screenCorners[3].y);  // 左下
       dispCtx.lineTo(screenCorners[0].x, screenCorners[0].y);  // 左上に戻る
       dispCtx.stroke();
+
+      // ========== 黄色い矩形（A4左上20%） ==========
+      const yellowRectA4 = [
+        { a4X: 0, a4Y: 0 },
+        { a4X: A4_WIDTH * 0.2, a4Y: 0 },
+        { a4X: A4_WIDTH * 0.2, a4Y: A4_HEIGHT * 0.2 },
+        { a4X: 0, a4Y: A4_HEIGHT * 0.2 }
+      ];
+
+      const yellowScreenCorners = [];
+      for (const corner of yellowRectA4) {
+        const screenPt = a4ToScreen(corner.a4X, corner.a4Y, displayScale, MARKER_DETECT_PARAMS);
+        yellowScreenCorners.push(screenPt);
+      }
+
+      // 黄色で塗りつぶし
+      dispCtx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+      dispCtx.beginPath();
+      dispCtx.moveTo(yellowScreenCorners[0].x, yellowScreenCorners[0].y);
+      dispCtx.lineTo(yellowScreenCorners[1].x, yellowScreenCorners[1].y);
+      dispCtx.lineTo(yellowScreenCorners[2].x, yellowScreenCorners[2].y);
+      dispCtx.lineTo(yellowScreenCorners[3].x, yellowScreenCorners[3].y);
+      dispCtx.closePath();
+      dispCtx.fill();
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
