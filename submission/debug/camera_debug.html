@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-014';
+    const VERSION = '20260418-015';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -144,6 +144,7 @@
     // ========== アニメーション管理 ==========
     let animId = null;
     let frameCount = 0;
+    let paramLoggedOnce = false;
 
     // ========== エラー表示 ==========
     function showError(msg) {
@@ -279,6 +280,12 @@
 
       animId = requestAnimationFrame(processFrame);
       frameCount++;
+
+      // 最初の実行時だけ MARKER_DETECT_PARAMS をログ出力
+      if (!paramLoggedOnce) {
+        console.log('[camera_debug] MARKER_DETECT_PARAMS on first frame:', MARKER_DETECT_PARAMS);
+        paramLoggedOnce = true;
+      }
 
       if (frameCount % 3 !== 0) return; // 3フレームごと
 

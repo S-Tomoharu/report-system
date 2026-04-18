@@ -218,7 +218,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-014';
+    const VERSION = '20260418-015';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[marker_debug] Script started, version:', VERSION);
@@ -303,6 +303,7 @@
         );
         if (cameraWindow) {
           setTimeout(() => {
+            console.log('[marker_debug] Passing PARAMS to camera_debug:', PARAMS);
             cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
             cameraWindow.displayCapturedImage = displayCapturedImage;
             console.log('[marker_debug] Camera window initialized with parameters');
