@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-007';
+    const VERSION = '20260418-008';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -301,6 +301,7 @@
       // 画面表示スケールを計算（1回だけ）
       const baseScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
+      console.log('[camera_debug] displayScale calculation:', { window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH, baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, displayScale });
 
       // 表示用キャンバス初期化
       displayCanvas.width = window.innerWidth;
