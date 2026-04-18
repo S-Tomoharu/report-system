@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-031';
+    const VERSION = '20260418-032';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -249,7 +249,9 @@
         sP: sP,
         cA: Math.round(cA),
         sA: Math.round(sA),
-        C: C.toFixed(1)
+        C: C.toFixed(1),
+        centerS_raw: centerS.toFixed(1),
+        outerS_raw: outerS.toFixed(1)
       };
     }
 
@@ -396,7 +398,8 @@
             videoX: videoPt.x.toFixed(1), videoY: videoPt.y.toFixed(1),
             windowSize: windowSize,
             CS: contrast.CS, OS: contrast.OS, sP: contrast.sP,
-            cA: contrast.cA, sA: contrast.sA, C: contrast.C
+            cA: contrast.cA, sA: contrast.sA, C: contrast.C,
+            centerS_raw: contrast.centerS_raw, outerS_raw: contrast.outerS_raw
           };
         }
 
@@ -465,7 +468,8 @@
         `[DEBUG GREEN]`,
         `A4(${debugInfo.a4X}, ${debugInfo.a4Y}) -> Video(${debugInfo.videoX}, ${debugInfo.videoY})`,
         `windowSize: ${debugInfo.windowSize}`,
-        `CS=${debugInfo.CS}, OS=${debugInfo.OS}, sP=${debugInfo.sP}`,
+        `CS=${debugInfo.CS} (raw: ${debugInfo.centerS_raw}), OS=${debugInfo.OS} (raw: ${debugInfo.outerS_raw})`,
+        `sP=${debugInfo.sP}`,
         `cA=${debugInfo.cA}, sA=${debugInfo.sA}, C=${debugInfo.C}`
       ];
       let debugY = paramY + 20;
