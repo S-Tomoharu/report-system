@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-023';
+    const VERSION = '20260418-024';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -124,8 +124,8 @@
 
     const EVALUATION_POINTS = {
       blue: { a4X: 540, a4Y: 763.5, label: '青' },
-      green: { a4X: 1033, a4Y: 1480, label: '緑' },
-      purple: { a4X: 1033, a4Y: 763.5, label: '紫' }
+      green: { a4X: 1054, a4Y: 1501, label: '緑' },
+      purple: { a4X: 1054, a4Y: 763.5, label: '紫' }
     };
 
     // ========== パラメータ ==========
@@ -318,7 +318,7 @@
 
       // 画面表示スケールを計算（1回だけ）
       // A4座標系基準でスケールを計算（スマホ機種に動的対応）
-      const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT);
+      const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT) * 0.9;
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
       // 表示用キャンバス初期化
