@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-028';
+    const VERSION = '20260418-029';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -299,10 +299,15 @@
 
       if (frameCount % 3 !== 0) return; // 3フレームごと
 
-      const videoW = video.videoWidth;
-      const videoH = video.videoHeight;
+      let videoW = video.videoWidth;
+      let videoH = video.videoHeight;
 
       if (videoW === 0 || videoH === 0) return;
+
+      // 機種依存対応：小さいほうを W、大きいほうを H に統一
+      if (videoW > videoH) {
+        [videoW, videoH] = [videoH, videoW];
+      }
 
       // データキャンバスをリサイズ
       if (dataCanvas.width !== videoW || dataCanvas.height !== videoH) {
