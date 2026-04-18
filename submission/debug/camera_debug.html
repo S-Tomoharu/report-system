@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-042';
+    const VERSION = '20260418-043';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -134,7 +134,8 @@
       MARKER_SIZE_RATIO: 0.038,
       MARGIN_RATIO: 0.5,
       VIDEO_SCALE: 1.0,
-      VIDEO_OFFSET_Y: 0
+      VIDEO_OFFSET_Y: 0,
+      DETECTION_RANGE_RATIO: 0.2
     };
 
     // URL パラメータから値を取得して上書き
@@ -150,6 +151,9 @@
     }
     if (urlParams.has('VIDEO_OFFSET_Y')) {
       MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y = parseFloat(urlParams.get('VIDEO_OFFSET_Y'));
+    }
+    if (urlParams.has('DETECTION_RANGE_RATIO')) {
+      MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(urlParams.get('DETECTION_RANGE_RATIO'));
     }
 
     console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
@@ -382,29 +386,61 @@
       dispCtx.lineTo(screenCorners[0].x, screenCorners[0].y);  // 左上に戻る
       dispCtx.stroke();
 
-      // ========== 黄色い矩形（A4左上20%） ==========
-      const yellowRectA4 = [
-        { a4X: 0, a4Y: 0 },
-        { a4X: A4_WIDTH * 0.2, a4Y: 0 },
-        { a4X: A4_WIDTH * 0.2, a4Y: A4_HEIGHT * 0.2 },
-        { a4X: 0, a4Y: A4_HEIGHT * 0.2 }
+      // ========== 黄色い矩形（A4の4つの角） ==========
+      const detectionRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
+      const rectWidth = A4_WIDTH * detectionRangeRatio;
+      const rectHeight = A4_HEIGHT * detectionRangeRatio;
+
+      // 4つの角の矩形定義
+      const detectionRects = [
+        // 左上
+        [
+          { a4X: 0, a4Y: 0 },
+          { a4X: rectWidth, a4Y: 0 },
+          { a4X: rectWidth, a4Y: rectHeight },
+          { a4X: 0, a4Y: rectHeight }
+        ],
+        // 右上
+        [
+          { a4X: A4_WIDTH - rectWidth, a4Y: 0 },
+          { a4X: A4_WIDTH, a4Y: 0 },
+          { a4X: A4_WIDTH, a4Y: rectHeight },
+          { a4X: A4_WIDTH - rectWidth, a4Y: rectHeight }
+        ],
+        // 右下
+        [
+          { a4X: A4_WIDTH - rectWidth, a4Y: A4_HEIGHT - rectHeight },
+          { a4X: A4_WIDTH, a4Y: A4_HEIGHT - rectHeight },
+          { a4X: A4_WIDTH, a4Y: A4_HEIGHT },
+          { a4X: A4_WIDTH - rectWidth, a4Y: A4_HEIGHT }
+        ],
+        // 左下
+        [
+          { a4X: 0, a4Y: A4_HEIGHT - rectHeight },
+          { a4X: rectWidth, a4Y: A4_HEIGHT - rectHeight },
+          { a4X: rectWidth, a4Y: A4_HEIGHT },
+          { a4X: 0, a4Y: A4_HEIGHT }
+        ]
       ];
 
-      const yellowScreenCorners = [];
-      for (const corner of yellowRectA4) {
-        const screenPt = a4ToScreen(corner.a4X, corner.a4Y, displayScale, MARKER_DETECT_PARAMS);
-        yellowScreenCorners.push(screenPt);
-      }
+      // 各矩形を黄色い枠で描画
+      dispCtx.strokeStyle = 'yellow';
+      dispCtx.lineWidth = 2;
+      for (const rectCorners of detectionRects) {
+        const screenCorners = [];
+        for (const corner of rectCorners) {
+          const screenPt = a4ToScreen(corner.a4X, corner.a4Y, displayScale, MARKER_DETECT_PARAMS);
+          screenCorners.push(screenPt);
+        }
 
-      // 黄色で塗りつぶし
-      dispCtx.fillStyle = 'rgba(255, 255, 0, 0.3)';
-      dispCtx.beginPath();
-      dispCtx.moveTo(yellowScreenCorners[0].x, yellowScreenCorners[0].y);
-      dispCtx.lineTo(yellowScreenCorners[1].x, yellowScreenCorners[1].y);
-      dispCtx.lineTo(yellowScreenCorners[2].x, yellowScreenCorners[2].y);
-      dispCtx.lineTo(yellowScreenCorners[3].x, yellowScreenCorners[3].y);
-      dispCtx.closePath();
-      dispCtx.fill();
+        dispCtx.beginPath();
+        dispCtx.moveTo(screenCorners[0].x, screenCorners[0].y);
+        dispCtx.lineTo(screenCorners[1].x, screenCorners[1].y);
+        dispCtx.lineTo(screenCorners[2].x, screenCorners[2].y);
+        dispCtx.lineTo(screenCorners[3].x, screenCorners[3].y);
+        dispCtx.closePath();
+        dispCtx.stroke();
+      }
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
