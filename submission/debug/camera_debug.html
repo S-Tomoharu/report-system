@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-045';
+    const VERSION = '20260418-046';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -135,7 +135,8 @@
       MARGIN_RATIO: 0.5,
       VIDEO_SCALE: 1.0,
       VIDEO_OFFSET_Y: 0,
-      DETECTION_RANGE_RATIO: 0.2
+      DETECTION_RANGE_RATIO: 0.2,
+      SCAN_STEP: 10
     };
 
     // URL パラメータから値を取得して上書き
@@ -154,6 +155,9 @@
     }
     if (urlParams.has('DETECTION_RANGE_RATIO')) {
       MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO = parseFloat(urlParams.get('DETECTION_RANGE_RATIO'));
+    }
+    if (urlParams.has('SCAN_STEP')) {
+      MARKER_DETECT_PARAMS.SCAN_STEP = parseFloat(urlParams.get('SCAN_STEP'));
     }
 
     console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
@@ -256,6 +260,51 @@
         C: C.toFixed(1),
         centerS_raw: centerS.toFixed(1),
         outerS_raw: outerS.toFixed(1)
+      };
+    }
+
+    // ========== BL領域のコントラスト最大値検索 ==========
+    function scanBLRegion(imgData, videoW, videoH, params) {
+      const detectionRangeRatio = params.DETECTION_RANGE_RATIO;
+      const rectW = A4_WIDTH * detectionRangeRatio;
+      const rectH = A4_HEIGHT * detectionRangeRatio;
+
+      // BL領域のA4座標範囲
+      const blMinX = 0;
+      const blMinY = A4_HEIGHT - rectH;
+      const blMaxX = rectW;
+      const blMaxY = A4_HEIGHT;
+
+      const windowSize = Math.max(8, Math.round(A4_WIDTH * params.MARKER_SIZE_RATIO));
+      const scanStep = params.SCAN_STEP;
+
+      let maxContrast = -Infinity;
+      let maxA4X = blMinX;
+      let maxA4Y = blMinY;
+
+      // BL領域内をSCAN_STEP間隔でグリッド走査
+      for (let a4Y = blMinY; a4Y <= blMaxY; a4Y += scanStep) {
+        for (let a4X = blMinX; a4X <= blMaxX; a4X += scanStep) {
+          // A4座標 → ビデオ座標に変換
+          const videoPt = a4ToVideo(a4X, a4Y, videoW, videoH);
+
+          // コントラスト計算
+          const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, params);
+          const contrastValue = parseFloat(contrast.C);
+
+          // 最大値を更新
+          if (contrastValue > maxContrast) {
+            maxContrast = contrastValue;
+            maxA4X = a4X;
+            maxA4Y = a4Y;
+          }
+        }
+      }
+
+      return {
+        a4X: maxA4X,
+        a4Y: maxA4Y,
+        contrast: maxContrast
       };
     }
 
@@ -452,6 +501,23 @@
         dispCtx.textBaseline = 'middle';
         dispCtx.fillText(labels[i], centerX, centerY);
       }
+
+      // ========== BL領域のコントラスト最大値 ==========
+      const blResult = scanBLRegion(imgData, videoW, videoH, MARKER_DETECT_PARAMS);
+      const blScreenPt = a4ToScreen(blResult.a4X, blResult.a4Y, displayScale, MARKER_DETECT_PARAMS);
+
+      // 赤色の点を描画（半径8px）
+      dispCtx.fillStyle = 'red';
+      dispCtx.beginPath();
+      dispCtx.arc(blScreenPt.x, blScreenPt.y, 8, 0, 2 * Math.PI);
+      dispCtx.fill();
+
+      // コントラスト値を赤色で表示
+      dispCtx.fillStyle = 'red';
+      dispCtx.font = 'bold 14px monospace';
+      dispCtx.textAlign = 'left';
+      dispCtx.textBaseline = 'top';
+      dispCtx.fillText(`C=${blResult.contrast.toFixed(1)}`, blScreenPt.x + 12, blScreenPt.y - 10);
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';

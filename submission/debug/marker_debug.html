@@ -219,6 +219,18 @@
     </div>
   </div>
 
+  <div class="control-group">
+    <div class="control-label">
+      <span>SCAN_STEP</span>
+      <span class="control-value" id="scanStepValue">10</span>
+    </div>
+    <input type="range" id="scanStepSlider" min="5" max="50" step="5" value="10">
+    <div class="info-box">
+      A4座標系での走査間隔（ピクセル）。<br>
+      5 = 細かい（重い）、10 = バランス、50 = 粗い（軽い）
+    </div>
+  </div>
+
   <div class="button-group">
     <button id="openCameraBtn">カメラを開く</button>
     <button id="closeBtn">閉じる</button>
@@ -230,7 +242,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-045';
+    const VERSION = '20260418-046';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[marker_debug] Script started, version:', VERSION);
@@ -251,7 +263,8 @@
       MARGIN_RATIO: 0.5,
       VIDEO_SCALE: 1.0,
       VIDEO_OFFSET_Y: 0,
-      DETECTION_RANGE_RATIO: 0.2
+      DETECTION_RANGE_RATIO: 0.2,
+      SCAN_STEP: 10
     };
 
     let cameraWindow = null;
@@ -263,6 +276,7 @@
       document.getElementById('videoScaleValue').textContent = PARAMS.VIDEO_SCALE.toFixed(2);
       document.getElementById('videoOffsetYValue').textContent = PARAMS.VIDEO_OFFSET_Y.toFixed(0);
       document.getElementById('detectionRangeValue').textContent = PARAMS.DETECTION_RANGE_RATIO.toFixed(2);
+      document.getElementById('scanStepValue').textContent = PARAMS.SCAN_STEP.toFixed(0);
     }
 
     // ========== パラメータ変更イベント ==========
@@ -308,6 +322,15 @@
       if (cameraWindow && !cameraWindow.closed) {
         cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
         console.log('[marker_debug] Updated DETECTION_RANGE_RATIO:', PARAMS.DETECTION_RANGE_RATIO);
+      }
+    });
+
+    document.getElementById('scanStepSlider').addEventListener('input', (e) => {
+      PARAMS.SCAN_STEP = parseFloat(e.target.value);
+      updateDisplay();
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+        console.log('[marker_debug] Updated SCAN_STEP:', PARAMS.SCAN_STEP);
       }
     });
 
