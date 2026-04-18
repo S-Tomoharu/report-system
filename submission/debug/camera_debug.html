@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-039';
+    const VERSION = '20260418-040';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -119,8 +119,8 @@
     const errorDiv = document.getElementById('error');
 
     // ========== 仕様書の値（固定） ==========
-    const A4_WIDTH = 1080;
-    const A4_HEIGHT = 1527;
+    const A4_WIDTH = 972;  // 1080 * 0.9
+    const A4_HEIGHT = 1374;  // 1527 * 0.9
 
     const EVALUATION_POINTS = {
       blue: { a4X: 540, a4Y: 763.5, label: '青' },
