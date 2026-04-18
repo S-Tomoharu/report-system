@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-009';
+    const VERSION = '20260418-010';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -302,6 +302,12 @@
       const baseScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
+      // 表示用キャンバス初期化
+      displayCanvas.width = window.innerWidth;
+      displayCanvas.height = window.innerHeight;
+      const dispCtx = displayCanvas.getContext('2d');
+      dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+
       // displayScale が NaN なら画面に表示してデバッグ
       if (isNaN(displayScale)) {
         dispCtx.fillStyle = 'red';
@@ -309,12 +315,6 @@
         dispCtx.fillText(`ERROR: displayScale is NaN`, 10, 50);
         console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
       }
-
-      // 表示用キャンバス初期化
-      displayCanvas.width = window.innerWidth;
-      displayCanvas.height = window.innerHeight;
-      const dispCtx = displayCanvas.getContext('2d');
-      dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
 
       // ========== A4枠の表示（白い矩形） ==========
       const a4Corners = [
