@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-013';
+    const VERSION = '20260418-014';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -129,22 +129,13 @@
     };
 
     // ========== パラメータ ==========
-    // marker_debug.html から参照する（定義しない）
-    function getMarkerDetectParams() {
-      if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
-        const params = window.opener.MARKER_DETECT_PARAMS;
-        console.log('[camera_debug] Got params from opener:', params);
-        return params;
-      }
-      // フォールバック（marker_debug.html が開いてない場合）
-      console.log('[camera_debug] Using fallback params (opener not available)');
-      return {
-        MARKER_SIZE_RATIO: 0.038,
-        MARGIN_RATIO: 0.5,
-        VIDEO_SCALE: 1.0,
-        VIDEO_OFFSET_Y: 0
-      };
-    }
+    // marker_debug.html から画面遷移時に渡される（初回のみ）
+    let MARKER_DETECT_PARAMS = {
+      MARKER_SIZE_RATIO: 0.038,
+      MARGIN_RATIO: 0.5,
+      VIDEO_SCALE: 1.0,
+      VIDEO_OFFSET_Y: 0
+    };
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
@@ -291,9 +282,6 @@
 
       if (frameCount % 3 !== 0) return; // 3フレームごと
 
-      // marker_debug.html から最新のパラメータを取得
-      const params = getMarkerDetectParams();
-
       const videoW = video.videoWidth;
       const videoH = video.videoHeight;
 
@@ -311,11 +299,11 @@
       const imgData = dataCtx.getImageData(0, 0, videoW, videoH);
 
       // ウィンドウサイズ計算（A4座標系の幅に対する比率）
-      const windowSize = Math.round(A4_WIDTH * params.MARKER_SIZE_RATIO);
+      const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
       // 画面表示スケールを計算（1回だけ）
       const baseScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
-      const displayScale = baseScale * params.VIDEO_SCALE;
+      const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
       // 表示用キャンバス初期化
       displayCanvas.width = window.innerWidth;
@@ -328,7 +316,7 @@
         dispCtx.fillStyle = 'red';
         dispCtx.font = 'bold 24px monospace';
         dispCtx.fillText(`ERROR: displayScale is NaN`, 10, 50);
-        console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: params.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
+        console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
       }
 
       // ========== A4枠の表示（白い矩形） ==========
@@ -342,7 +330,7 @@
       const screenCorners = [];
       for (const corner of a4Corners) {
         const videoPt = a4ToVideo(corner.a4X, corner.a4Y, videoW, videoH);
-        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, params);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, MARKER_DETECT_PARAMS);
         screenCorners.push(screenPt);
       }
 
@@ -368,7 +356,7 @@
 
       for (const pt of debugPoints) {
         const videoPt = a4ToVideo(pt.a4X, pt.a4Y, videoW, videoH);
-        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, params);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, MARKER_DETECT_PARAMS);
 
         console.log(`[DEBUG] ${pt.label}: A4(${pt.a4X}, ${pt.a4Y}) -> Video(${videoPt.x.toFixed(1)}, ${videoPt.y.toFixed(1)}) -> Screen(${screenPt.x.toFixed(1)}, ${screenPt.y.toFixed(1)})`);
 
@@ -391,10 +379,10 @@
         const videoPt = a4ToVideo(point.a4X, point.a4Y, videoW, videoH);
 
         // コントラスト計算
-        const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, params);
+        const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, MARKER_DETECT_PARAMS);
 
         // ビデオ座標 → 画面座標
-        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, params);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale, MARKER_DETECT_PARAMS);
 
         // 画面での描画サイズ（displayScale を使用）
         const screenWindowSize = windowSize * displayScale;
