@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-018';
+    const VERSION = '20260418-019';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -438,6 +438,7 @@
       const a4Origin = a4ToVideo(0, 0, videoW, videoH);
       const screenOrigin = videoToScreen(a4Origin.x, a4Origin.y, displayScale, MARKER_DETECT_PARAMS);
 
+      const rect = video.getBoundingClientRect();
       const paramText = [
         `MARKER_SIZE_RATIO: ${MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO.toFixed(3)}`,
         `MARGIN_RATIO: ${MARKER_DETECT_PARAMS.MARGIN_RATIO.toFixed(1)}`,
@@ -445,6 +446,7 @@
         `VIDEO_OFFSET_Y: ${MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y.toFixed(0)}`,
         `baseScale: ${baseScale.toFixed(4)}`,
         `displayScale: ${displayScale.toFixed(4)}`,
+        `rect.left: ${rect.left.toFixed(1)}, rect.top: ${rect.top.toFixed(1)}`,
         `A4(0,0) -> Screen(${screenOrigin.x.toFixed(1)}, ${screenOrigin.y.toFixed(1)})`
       ];
       let paramY = 20;
