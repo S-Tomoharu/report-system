@@ -234,19 +234,26 @@
     });
 
     openCameraBtn.addEventListener('click', () => {
+      console.log('[marker_debug] Opening camera window');
       if (cameraWindow && !cameraWindow.closed) {
+        console.log('[marker_debug] Camera window already open, focusing');
         cameraWindow.focus();
       } else {
+        console.log('[marker_debug] Creating new camera window');
         cameraWindow = window.open(
           './camera_debug.html',
           'cameraWindow',
           'width=390,height=844'
         );
         if (cameraWindow) {
+          console.log('[marker_debug] Camera window created, setting up communication');
           setTimeout(() => {
             cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
             cameraWindow.captureCallback = displayCapturedImage;
+            console.log('[marker_debug] Parameters passed to camera window');
           }, 500);
+        } else {
+          console.error('[marker_debug] Failed to open camera window');
         }
       }
     });
