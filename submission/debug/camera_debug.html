@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-025';
+    const VERSION = '20260418-026';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -392,6 +392,17 @@
 
         // コントラスト計算
         const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, MARKER_DETECT_PARAMS);
+
+        // デバッグ：緑の点の情報をコンソール出力
+        if (key === 'green') {
+          console.log(`[DEBUG] ${point.label}:`, {
+            a4X: point.a4X, a4Y: point.a4Y,
+            videoPt: videoPt,
+            windowSize: windowSize,
+            contrast: contrast,
+            imgData_length: imgData.data.length
+          });
+        }
 
         // A4座標 → 画面座標（表示用）
         const screenPt = a4ToScreen(point.a4X, point.a4Y, displayScale, MARKER_DETECT_PARAMS);
