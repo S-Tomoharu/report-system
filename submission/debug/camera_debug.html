@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-005';
+    const VERSION = '20260418-006';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -162,10 +162,11 @@
     // ========== 座標変換: ビデオ座標 → 画面座標 ==========
     function videoToScreen(videoX, videoY) {
       const rect = video.getBoundingClientRect();
-      const scale = Math.min(rect.width / video.videoWidth, rect.height / video.videoHeight);
+      const baseScale = Math.min(rect.width / video.videoWidth, rect.height / video.videoHeight);
+      const scale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
       return {
         x: rect.left + videoX * scale,
-        y: rect.top + videoY * scale
+        y: rect.top + videoY * scale + MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y
       };
     }
 

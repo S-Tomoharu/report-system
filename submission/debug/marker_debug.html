@@ -183,6 +183,30 @@
     </div>
   </div>
 
+  <div class="control-group">
+    <div class="control-label">
+      <span>VIDEO_SCALE</span>
+      <span class="control-value" id="videoScaleValue">1.00</span>
+    </div>
+    <input type="range" id="videoScaleSlider" min="0.5" max="3" step="0.1" value="1.0">
+    <div class="info-box">
+      画面表示のスケール倍率。<br>
+      1.0 = 等倍、1.5 = 1.5倍、2.0 = 2倍
+    </div>
+  </div>
+
+  <div class="control-group">
+    <div class="control-label">
+      <span>VIDEO_OFFSET_Y</span>
+      <span class="control-value" id="videoOffsetYValue">0</span>
+    </div>
+    <input type="range" id="videoOffsetYSlider" min="-200" max="200" step="10" value="0">
+    <div class="info-box">
+      画面上の垂直オフセット（ピクセル）。<br>
+      正の値で下へ、負の値で上へ移動
+    </div>
+  </div>
+
   <div class="button-group">
     <button id="openCameraBtn">カメラを開く</button>
     <button id="closeBtn">閉じる</button>
@@ -194,7 +218,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-005';
+    const VERSION = '20260418-006';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[marker_debug] Script started, version:', VERSION);
@@ -212,7 +236,9 @@
     // ========== パラメータ ==========
     const PARAMS = {
       MARKER_SIZE_RATIO: 0.038,
-      MARGIN_RATIO: 0.5
+      MARGIN_RATIO: 0.5,
+      VIDEO_SCALE: 1.0,
+      VIDEO_OFFSET_Y: 0
     };
 
     let cameraWindow = null;
@@ -221,6 +247,8 @@
     function updateDisplay() {
       markerSizeValue.textContent = PARAMS.MARKER_SIZE_RATIO.toFixed(3);
       marginValue.textContent = PARAMS.MARGIN_RATIO.toFixed(1);
+      document.getElementById('videoScaleValue').textContent = PARAMS.VIDEO_SCALE.toFixed(2);
+      document.getElementById('videoOffsetYValue').textContent = PARAMS.VIDEO_OFFSET_Y.toFixed(0);
     }
 
     // ========== パラメータ変更イベント ==========
@@ -239,6 +267,24 @@
       if (cameraWindow && !cameraWindow.closed) {
         cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
         console.log('[marker_debug] Updated MARGIN_RATIO:', PARAMS.MARGIN_RATIO);
+      }
+    });
+
+    document.getElementById('videoScaleSlider').addEventListener('input', (e) => {
+      PARAMS.VIDEO_SCALE = parseFloat(e.target.value);
+      updateDisplay();
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+        console.log('[marker_debug] Updated VIDEO_SCALE:', PARAMS.VIDEO_SCALE);
+      }
+    });
+
+    document.getElementById('videoOffsetYSlider').addEventListener('input', (e) => {
+      PARAMS.VIDEO_OFFSET_Y = parseFloat(e.target.value);
+      updateDisplay();
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
+        console.log('[marker_debug] Updated VIDEO_OFFSET_Y:', PARAMS.VIDEO_OFFSET_Y);
       }
     });
 
