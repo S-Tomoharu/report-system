@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-017';
+    const VERSION = '20260418-018';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -433,11 +433,19 @@
       // ========== MARKER_DETECT_PARAMS を画面上に表示 ==========
       dispCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
       dispCtx.font = 'bold 14px monospace';
+
+      // A4(0,0) の画面座標を計算
+      const a4Origin = a4ToVideo(0, 0, videoW, videoH);
+      const screenOrigin = videoToScreen(a4Origin.x, a4Origin.y, displayScale, MARKER_DETECT_PARAMS);
+
       const paramText = [
         `MARKER_SIZE_RATIO: ${MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO.toFixed(3)}`,
         `MARGIN_RATIO: ${MARKER_DETECT_PARAMS.MARGIN_RATIO.toFixed(1)}`,
         `VIDEO_SCALE: ${MARKER_DETECT_PARAMS.VIDEO_SCALE.toFixed(2)}`,
-        `VIDEO_OFFSET_Y: ${MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y.toFixed(0)}`
+        `VIDEO_OFFSET_Y: ${MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y.toFixed(0)}`,
+        `baseScale: ${baseScale.toFixed(4)}`,
+        `displayScale: ${displayScale.toFixed(4)}`,
+        `A4(0,0) -> Screen(${screenOrigin.x.toFixed(1)}, ${screenOrigin.y.toFixed(1)})`
       ];
       let paramY = 20;
       for (const line of paramText) {
