@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-002';
+    const VERSION = '20260418-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -244,14 +244,24 @@
 
         console.log('[camera_debug] Stream obtained');
 
+        console.log('[camera_debug] Setting up loadedmetadata listener');
         video.addEventListener('loadedmetadata', () => {
-          console.log(`[camera_debug] Video ready: ${video.videoWidth}×${video.videoHeight}`);
+          console.log(`[camera_debug] loadedmetadata event fired! Video: ${video.videoWidth}×${video.videoHeight}`);
           processFrame();
         }, { once: true });
 
         video.srcObject = stream;
+        console.log('[camera_debug] video.srcObject set, calling play()');
         await video.play();
-        console.log('[camera_debug] Video playing');
+        console.log('[camera_debug] video.play() completed');
+
+        // fallback: loadedmetadata が発火しない場合
+        setTimeout(() => {
+          if (video.videoWidth > 0 && !animId) {
+            console.log('[camera_debug] Fallback: loadedmetadata not fired, calling processFrame() manually');
+            processFrame();
+          }
+        }, 1000);
       } catch (err) {
         showError('カメラを起動できませんでした: ' + err.message);
       }
