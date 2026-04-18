@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-004';
+    const VERSION = '20260418-005';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -216,13 +216,16 @@
       const sP = (ox1-ox0)*(oy1-oy0) - (windowSize*windowSize);
       const sA = sP > 0 ? (outerS - centerS) / sP : 0;
 
+      // コントラスト値（元の小数値で計算してから丸める）
+      const C = sA - cA;
+
       return {
         CS: Math.round(centerS),
         OS: Math.round(outerS),
         sP: sP,
         cA: Math.round(cA),
         sA: Math.round(sA),
-        C: (sA - cA).toFixed(1)
+        C: C.toFixed(1)
       };
     }
 
@@ -300,6 +303,32 @@
       displayCanvas.height = window.innerHeight;
       const dispCtx = displayCanvas.getContext('2d');
       dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+      // ========== A4枠の表示（白い矩形） ==========
+      const a4Corners = [
+        { a4X: 0, a4Y: 0 },           // 左上
+        { a4X: 1080, a4Y: 0 },        // 右上
+        { a4X: 1080, a4Y: 1527 },     // 右下
+        { a4X: 0, a4Y: 1527 }         // 左下
+      ];
+
+      const screenCorners = [];
+      for (const corner of a4Corners) {
+        const videoPt = a4ToVideo(corner.a4X, corner.a4Y, videoW, videoH);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y);
+        screenCorners.push(screenPt);
+      }
+
+      // 白い矩形枠を描画
+      dispCtx.strokeStyle = 'white';
+      dispCtx.lineWidth = 2;
+      dispCtx.beginPath();
+      dispCtx.moveTo(screenCorners[0].x, screenCorners[0].y);  // 左上
+      dispCtx.lineTo(screenCorners[1].x, screenCorners[1].y);  // 右上
+      dispCtx.lineTo(screenCorners[2].x, screenCorners[2].y);  // 右下
+      dispCtx.lineTo(screenCorners[3].x, screenCorners[3].y);  // 左下
+      dispCtx.lineTo(screenCorners[0].x, screenCorners[0].y);  // 左上に戻る
+      dispCtx.stroke();
 
       // ========== A4座標系の四隅と中央点をデバッグ表示 ==========
       const debugPoints = [
