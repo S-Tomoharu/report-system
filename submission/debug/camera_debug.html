@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-001';
+    const VERSION = '20260418-002';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -303,6 +303,8 @@
       for (const pt of debugPoints) {
         const videoPt = a4ToVideo(pt.a4X, pt.a4Y, videoW, videoH);
         const screenPt = videoToScreen(videoPt.x, videoPt.y);
+
+        console.log(`[DEBUG] ${pt.label}: A4(${pt.a4X}, ${pt.a4Y}) -> Video(${videoPt.x.toFixed(1)}, ${videoPt.y.toFixed(1)}) -> Screen(${screenPt.x.toFixed(1)}, ${screenPt.y.toFixed(1)})`);
 
         // 点を描画
         dispCtx.fillStyle = pt.color;
