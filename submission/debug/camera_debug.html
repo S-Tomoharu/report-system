@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-010';
+    const VERSION = '20260418-011';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -131,7 +131,9 @@
     // ========== パラメータ ==========
     let MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.038,
-      MARGIN_RATIO: 0.5
+      MARGIN_RATIO: 0.5,
+      VIDEO_SCALE: 1.0,
+      VIDEO_OFFSET_Y: 0
     };
 
     // ========== キャンバス ==========
