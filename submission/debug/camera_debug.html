@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-046';
+    const VERSION = '20260418-047';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -202,26 +202,7 @@
     }
 
     // ========== コントラスト計算 ==========
-    function calculateContrast(imgData, videoX, videoY, windowSize, videoW, videoH, params) {
-      const d = imgData.data;
-
-      // グレースケール変換
-      const gray = new Uint8Array(videoW * videoH);
-      for (let i = 0; i < videoW * videoH; i++) {
-        const p = i * 4;
-        gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
-      }
-
-      // 積分画像構築
-      const W1 = videoW + 1;
-      const integ = new Int32Array((videoH + 1) * W1);
-      for (let y = 1; y <= videoH; y++) {
-        for (let x = 1; x <= videoW; x++) {
-          integ[y * W1 + x] = gray[(y-1) * videoW + (x-1)]
-            + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
-        }
-      }
-
+    function calculateContrast(videoX, videoY, windowSize, gray, integ, videoW, videoH, W1, params) {
       // 矩形領域の合計を高速計算
       function rectSum(x0, y0, x1, y1) {
         x0 = Math.max(0, x0);
@@ -263,45 +244,57 @@
       };
     }
 
-    // ========== BL領域のコントラスト最大値検索 ==========
-    function scanBLRegion(imgData, videoW, videoH, params) {
+    // ========== BL領域のコントラスト最大値検索（ビデオ座標系） ==========
+    function scanBLRegion(videoW, videoH, gray, integ, W1, params) {
       const detectionRangeRatio = params.DETECTION_RANGE_RATIO;
       const rectW = A4_WIDTH * detectionRangeRatio;
       const rectH = A4_HEIGHT * detectionRangeRatio;
 
       // BL領域のA4座標範囲
-      const blMinX = 0;
-      const blMinY = A4_HEIGHT - rectH;
-      const blMaxX = rectW;
-      const blMaxY = A4_HEIGHT;
+      const blA4MinX = 0;
+      const blA4MinY = A4_HEIGHT - rectH;
+      const blA4MaxX = rectW;
+      const blA4MaxY = A4_HEIGHT;
+
+      // A4座標 → ビデオ座標に変換（領域の四隅）
+      const blVidMinPt = a4ToVideo(blA4MinX, blA4MinY, videoW, videoH);
+      const blVidMaxPt = a4ToVideo(blA4MaxX, blA4MaxY, videoW, videoH);
+
+      const blVidMinX = Math.round(blVidMinPt.x);
+      const blVidMinY = Math.round(blVidMinPt.y);
+      const blVidMaxX = Math.round(blVidMaxPt.x);
+      const blVidMaxY = Math.round(blVidMaxPt.y);
 
       const windowSize = Math.max(8, Math.round(A4_WIDTH * params.MARKER_SIZE_RATIO));
-      const scanStep = params.SCAN_STEP;
 
       let maxContrast = -Infinity;
-      let maxA4X = blMinX;
-      let maxA4Y = blMinY;
+      let maxVideoX = blVidMinX;
+      let maxVideoY = blVidMinY;
 
-      // BL領域内をSCAN_STEP間隔でグリッド走査
-      for (let a4Y = blMinY; a4Y <= blMaxY; a4Y += scanStep) {
-        for (let a4X = blMinX; a4X <= blMaxX; a4X += scanStep) {
-          // A4座標 → ビデオ座標に変換
-          const videoPt = a4ToVideo(a4X, a4Y, videoW, videoH);
-
-          // コントラスト計算
-          const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, params);
+      // BL領域内を1ピクセル単位で全走査
+      for (let y = blVidMinY; y + windowSize <= blVidMaxY; y++) {
+        for (let x = blVidMinX; x + windowSize <= blVidMaxX; x++) {
+          const contrast = calculateContrast(x, y, windowSize, gray, integ, videoW, videoH, W1, params);
           const contrastValue = parseFloat(contrast.C);
 
           // 最大値を更新
           if (contrastValue > maxContrast) {
             maxContrast = contrastValue;
-            maxA4X = a4X;
-            maxA4Y = a4Y;
+            maxVideoX = x;
+            maxVideoY = y;
           }
         }
       }
 
+      // ビデオ座標 → A4座標に変換（表示用）
+      const offsetX = (videoW - A4_WIDTH) / 2;
+      const offsetY = (videoH - A4_HEIGHT) / 2;
+      const maxA4X = maxVideoX - offsetX;
+      const maxA4Y = maxVideoY - offsetY;
+
       return {
+        videoX: maxVideoX,
+        videoY: maxVideoY,
         a4X: maxA4X,
         a4Y: maxA4Y,
         contrast: maxContrast
@@ -387,6 +380,23 @@
       // ビデオからピクセルデータ取得
       dataCtx.drawImage(video, 0, 0, videoW, videoH);
       const imgData = dataCtx.getImageData(0, 0, videoW, videoH);
+      const d = imgData.data;
+
+      // ========== グレースケール＆積分画像を1回だけ計算 ==========
+      const gray = new Uint8Array(videoW * videoH);
+      for (let i = 0; i < videoW * videoH; i++) {
+        const p = i * 4;
+        gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
+      }
+
+      const W1 = videoW + 1;
+      const integ = new Int32Array((videoH + 1) * W1);
+      for (let y = 1; y <= videoH; y++) {
+        for (let x = 1; x <= videoW; x++) {
+          integ[y * W1 + x] = gray[(y-1) * videoW + (x-1)]
+            + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
+        }
+      }
 
       // ウィンドウサイズ計算（A4座標系の幅に対する比率）
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
@@ -503,7 +513,7 @@
       }
 
       // ========== BL領域のコントラスト最大値 ==========
-      const blResult = scanBLRegion(imgData, videoW, videoH, MARKER_DETECT_PARAMS);
+      const blResult = scanBLRegion(videoW, videoH, gray, integ, W1, MARKER_DETECT_PARAMS);
       const blScreenPt = a4ToScreen(blResult.a4X, blResult.a4Y, displayScale, MARKER_DETECT_PARAMS);
 
       // 赤色の点を描画（半径8px）
@@ -528,7 +538,7 @@
         const videoPt = a4ToVideo(point.a4X, point.a4Y, videoW, videoH);
 
         // コントラスト計算
-        const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH, MARKER_DETECT_PARAMS);
+        const contrast = calculateContrast(videoPt.x, videoPt.y, windowSize, gray, integ, videoW, videoH, W1, MARKER_DETECT_PARAMS);
 
         // デバッグ：緑の点の情報を保存（画面表示用）
         if (key === 'green') {
