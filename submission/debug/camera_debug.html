@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-012';
+    const VERSION = '20260418-013';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -132,9 +132,12 @@
     // marker_debug.html から参照する（定義しない）
     function getMarkerDetectParams() {
       if (window.opener && window.opener.MARKER_DETECT_PARAMS) {
-        return window.opener.MARKER_DETECT_PARAMS;
+        const params = window.opener.MARKER_DETECT_PARAMS;
+        console.log('[camera_debug] Got params from opener:', params);
+        return params;
       }
       // フォールバック（marker_debug.html が開いてない場合）
+      console.log('[camera_debug] Using fallback params (opener not available)');
       return {
         MARKER_SIZE_RATIO: 0.038,
         MARGIN_RATIO: 0.5,
