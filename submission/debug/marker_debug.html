@@ -218,7 +218,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-016';
+    const VERSION = '20260418-017';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[marker_debug] Script started, version:', VERSION);
@@ -296,18 +296,17 @@
         cameraWindow.focus();
       } else {
         console.log('[marker_debug] Opening new camera window');
+        const paramString = Object.entries(PARAMS).map(([k, v]) => `${k}=${v}`).join('&');
+        const cameraUrl = `./camera_debug.html?${paramString}`;
+        console.log('[marker_debug] Opening with URL:', cameraUrl);
         cameraWindow = window.open(
-          './camera_debug.html',
+          cameraUrl,
           'cameraWindow',
           'width=390,height=844'
         );
         if (cameraWindow) {
-          setTimeout(() => {
-            console.log('[marker_debug] Passing PARAMS to camera_debug:', PARAMS);
-            cameraWindow.MARKER_DETECT_PARAMS = PARAMS;
-            cameraWindow.displayCapturedImage = displayCapturedImage;
-            console.log('[marker_debug] Camera window initialized with parameters');
-          }, 500);
+          // displayCapturedImage だけ渡す（パラメータは URL に含まれている）
+          cameraWindow.displayCapturedImage = displayCapturedImage;
         } else {
           console.error('[marker_debug] Failed to open camera window');
         }

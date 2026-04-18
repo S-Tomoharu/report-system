@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-016';
+    const VERSION = '20260418-017';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -129,13 +129,30 @@
     };
 
     // ========== パラメータ ==========
-    // marker_debug.html から画面遷移時に渡される（初回のみ）
+    // marker_debug.html から URL パラメータで渡される
     let MARKER_DETECT_PARAMS = {
       MARKER_SIZE_RATIO: 0.038,
       MARGIN_RATIO: 0.5,
       VIDEO_SCALE: 1.0,
       VIDEO_OFFSET_Y: 0
     };
+
+    // URL パラメータから値を取得して上書き
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('MARKER_SIZE_RATIO')) {
+      MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO = parseFloat(urlParams.get('MARKER_SIZE_RATIO'));
+    }
+    if (urlParams.has('MARGIN_RATIO')) {
+      MARKER_DETECT_PARAMS.MARGIN_RATIO = parseFloat(urlParams.get('MARGIN_RATIO'));
+    }
+    if (urlParams.has('VIDEO_SCALE')) {
+      MARKER_DETECT_PARAMS.VIDEO_SCALE = parseFloat(urlParams.get('VIDEO_SCALE'));
+    }
+    if (urlParams.has('VIDEO_OFFSET_Y')) {
+      MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y = parseFloat(urlParams.get('VIDEO_OFFSET_Y'));
+    }
+
+    console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
@@ -144,7 +161,6 @@
     // ========== アニメーション管理 ==========
     let animId = null;
     let frameCount = 0;
-    let paramLoggedOnce = false;
 
     // ========== エラー表示 ==========
     function showError(msg) {
@@ -280,12 +296,6 @@
 
       animId = requestAnimationFrame(processFrame);
       frameCount++;
-
-      // 最初の実行時だけ MARKER_DETECT_PARAMS をログ出力
-      if (!paramLoggedOnce) {
-        console.log('[camera_debug] MARKER_DETECT_PARAMS on first frame:', MARKER_DETECT_PARAMS);
-        paramLoggedOnce = true;
-      }
 
       if (frameCount % 3 !== 0) return; // 3フレームごと
 
