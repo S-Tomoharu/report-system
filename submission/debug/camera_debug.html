@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-006';
+    const VERSION = '20260418-007';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -160,13 +160,12 @@
     }
 
     // ========== 座標変換: ビデオ座標 → 画面座標 ==========
-    function videoToScreen(videoX, videoY) {
+    // displayScale は processFrame() で計算して渡される
+    function videoToScreen(videoX, videoY, displayScale) {
       const rect = video.getBoundingClientRect();
-      const baseScale = Math.min(rect.width / video.videoWidth, rect.height / video.videoHeight);
-      const scale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
       return {
-        x: rect.left + videoX * scale,
-        y: rect.top + videoY * scale + MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y
+        x: rect.left + videoX * displayScale,
+        y: rect.top + videoY * displayScale + MARKER_DETECT_PARAMS.VIDEO_OFFSET_Y
       };
     }
 
@@ -299,6 +298,10 @@
       // ウィンドウサイズ計算（A4座標系の幅に対する比率）
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
+      // 画面表示スケールを計算（1回だけ）
+      const baseScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
+      const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
+
       // 表示用キャンバス初期化
       displayCanvas.width = window.innerWidth;
       displayCanvas.height = window.innerHeight;
@@ -316,7 +319,7 @@
       const screenCorners = [];
       for (const corner of a4Corners) {
         const videoPt = a4ToVideo(corner.a4X, corner.a4Y, videoW, videoH);
-        const screenPt = videoToScreen(videoPt.x, videoPt.y);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale);
         screenCorners.push(screenPt);
       }
 
@@ -342,7 +345,7 @@
 
       for (const pt of debugPoints) {
         const videoPt = a4ToVideo(pt.a4X, pt.a4Y, videoW, videoH);
-        const screenPt = videoToScreen(videoPt.x, videoPt.y);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale);
 
         console.log(`[DEBUG] ${pt.label}: A4(${pt.a4X}, ${pt.a4Y}) -> Video(${videoPt.x.toFixed(1)}, ${videoPt.y.toFixed(1)}) -> Screen(${screenPt.x.toFixed(1)}, ${screenPt.y.toFixed(1)})`);
 
@@ -368,12 +371,10 @@
         const contrast = calculateContrast(imgData, videoPt.x, videoPt.y, windowSize, videoW, videoH);
 
         // ビデオ座標 → 画面座標
-        const screenPt = videoToScreen(videoPt.x, videoPt.y);
+        const screenPt = videoToScreen(videoPt.x, videoPt.y, displayScale);
 
-        // 画面での描画サイズ
-        const rect = video.getBoundingClientRect();
-        const scale = Math.min(rect.width / videoW, rect.height / videoH);
-        const screenWindowSize = windowSize * scale;
+        // 画面での描画サイズ（displayScale を使用）
+        const screenWindowSize = windowSize * displayScale;
 
         // 色決定
         let color;
