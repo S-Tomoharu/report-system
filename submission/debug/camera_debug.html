@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-001';
+    const VERSION = '20260420-002';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -533,8 +533,14 @@
       const blVideoH = blVideoMaxY - blVideoMinY;
 
       if (blVideoW > 0 && blVideoH > 0) {
+        // グレースケール画像をオフスクリーン canvas に作成
+        const blCanvas = document.createElement('canvas');
+        blCanvas.width = blVideoW;
+        blCanvas.height = blVideoH;
+        const blCtx = blCanvas.getContext('2d');
+
         // グレースケール画像を ImageData に変換
-        const blImgData = dispCtx.createImageData(blVideoW, blVideoH);
+        const blImgData = blCtx.createImageData(blVideoW, blVideoH);
         const blData = blImgData.data;
         for (let y = 0; y < blVideoH; y++) {
           for (let x = 0; x < blVideoW; x++) {
@@ -546,14 +552,20 @@
             blData[idx + 3] = 255;     // A
           }
         }
+        blCtx.putImageData(blImgData, 0, 0);
 
         // BL領域のスクリーン座標を計算
         const blScreenCorners = blA4Coords.map(c => a4ToScreen(c.x, c.y, displayScale, MARKER_DETECT_PARAMS));
         const blScreenMinX = Math.min(...blScreenCorners.map(p => p.x));
         const blScreenMinY = Math.min(...blScreenCorners.map(p => p.y));
+        const blScreenMaxX = Math.max(...blScreenCorners.map(p => p.x));
+        const blScreenMaxY = Math.max(...blScreenCorners.map(p => p.y));
 
-        // グレースケール画像を描画
-        dispCtx.putImageData(blImgData, blScreenMinX, blScreenMinY);
+        const blScreenW = blScreenMaxX - blScreenMinX;
+        const blScreenH = blScreenMaxY - blScreenMinY;
+
+        // オフスクリーン canvas を displayCanvas に縮小描画
+        dispCtx.drawImage(blCanvas, 0, 0, blVideoW, blVideoH, blScreenMinX, blScreenMinY, blScreenW, blScreenH);
       }
 
       // ========== BL領域のコントラスト最大値 ==========
