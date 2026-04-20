@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-011';
+    const VERSION = '20260420-012';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -677,12 +677,68 @@
         dispCtx.fillText(line, 10, debugY);
         debugY += 20;
       }
+
+      // 最新フレームを保存（撮影時に使用）
+      window.lastCaptureData = { gray, videoW, videoH, dataCanvas };
     }
 
     // ========== 撮影 ==========
     captureBtn.addEventListener('click', () => {
 
-      // A4領域をトリミング
+      // 最新フレームデータから RGB と グレースケール を download
+      if (window.lastCaptureData) {
+        const { gray, videoW, videoH, dataCanvas } = window.lastCaptureData;
+
+        // タイムスタンプ生成
+        const now = new Date();
+        const timestamp = now.getFullYear() +
+          String(now.getMonth() + 1).padStart(2, '0') +
+          String(now.getDate()).padStart(2, '0') + '_' +
+          String(now.getHours()).padStart(2, '0') +
+          String(now.getMinutes()).padStart(2, '0') +
+          String(now.getSeconds()).padStart(2, '0');
+
+        // RGB 画像をダウンロード（dataCanvas をそのまま使用）
+        dataCanvas.toBlob((blob) => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `video_rgb_${timestamp}.png`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+        }, 'image/png');
+
+        // グレースケール画像をダウンロード
+        const grayCanvas = document.createElement('canvas');
+        grayCanvas.width = videoW;
+        grayCanvas.height = videoH;
+        const grayCtx = grayCanvas.getContext('2d');
+
+        const grayImgData = grayCtx.createImageData(videoW, videoH);
+        const grayData = grayImgData.data;
+        for (let i = 0; i < videoW * videoH; i++) {
+          const grayVal = gray[i];
+          const idx = i * 4;
+          grayData[idx] = grayVal;     // R
+          grayData[idx + 1] = grayVal; // G
+          grayData[idx + 2] = grayVal; // B
+          grayData[idx + 3] = 255;     // A
+        }
+        grayCtx.putImageData(grayImgData, 0, 0);
+
+        grayCanvas.toBlob((blob) => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `video_gray_${timestamp}.png`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+        }, 'image/png');
+
+        console.log('[camera_debug] Downloaded RGB and grayscale images:', timestamp);
+      } else {
+        console.warn('[camera_debug] No capture data available');
+      }
+
+      // A4領域をトリミング（既存機能）
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = A4_WIDTH;
       tempCanvas.height = A4_HEIGHT;
