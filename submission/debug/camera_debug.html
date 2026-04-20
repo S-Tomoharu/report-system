@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-002';
+    const VERSION = '20260420-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -564,8 +564,18 @@
         const blScreenW = blScreenMaxX - blScreenMinX;
         const blScreenH = blScreenMaxY - blScreenMinY;
 
+        // ========== デバッグ用：グレースケール画像を前面に出す ==========
+        // 背景を白で塗りつぶし、グレースケール画像だけを表示
+        dispCtx.fillStyle = 'white';
+        dispCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
         // オフスクリーン canvas を displayCanvas に縮小描画
         dispCtx.drawImage(blCanvas, 0, 0, blVideoW, blVideoH, blScreenMinX, blScreenMinY, blScreenW, blScreenH);
+
+        // グレースケール領域の枠を赤で強調
+        dispCtx.strokeStyle = 'red';
+        dispCtx.lineWidth = 3;
+        dispCtx.strokeRect(blScreenMinX, blScreenMinY, blScreenW, blScreenH);
       }
 
       // ========== BL領域のコントラスト最大値 ==========
