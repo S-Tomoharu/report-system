@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-008';
+    const VERSION = '20260420-009';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -535,7 +535,7 @@
 
       // ========== 左側：video（RGB）の左半分 ==========
       // video 全体をビデオ座標系の比率で左側に描画
-      const videoScreenScale = Math.max(window.innerWidth / videoW, window.innerHeight / videoH);
+      const videoScreenScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
       const screenW = videoW * videoScreenScale;
       const screenH = videoH * videoScreenScale;
       const screenX = (window.innerWidth - screenW) / 2;
