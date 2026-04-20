@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-016';
+    const VERSION = '20260420-017';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -698,22 +698,24 @@
           String(now.getMinutes()).padStart(2, '0') +
           String(now.getSeconds()).padStart(2, '0');
 
-        // RGB 画像をダウンロード（dataCanvas をそのまま使用）
+        // RGB 画像をダウンロード（独立）
         dataCanvas.toBlob((rgbBlob) => {
           console.log('[camera_debug] RGB blob size:', rgbBlob.size);
           if (rgbBlob.size === 0) {
             console.error('[camera_debug] RGB blob is empty!');
-          } else {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(rgbBlob);
-            link.download = `video_rgb_${timestamp}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            console.log('[camera_debug] RGB download triggered');
+            return;
           }
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(rgbBlob);
+          link.download = `video_rgb_${timestamp}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          console.log('[camera_debug] RGB download triggered');
+        }, 'image/png');
 
-          // RGB の後、グレースケール画像をダウンロード
+        // グレースケール画像をダウンロード（独立・delay 付き）
+        setTimeout(() => {
           const grayCanvas = document.createElement('canvas');
           grayCanvas.width = videoW;
           grayCanvas.height = videoH;
@@ -745,7 +747,7 @@
             document.body.removeChild(link);
             console.log('[camera_debug] Gray download triggered');
           }, 'image/png');
-        }, 'image/png');
+        }, 500);
 
         console.log('[camera_debug] Downloaded RGB and grayscale images:', timestamp);
       } else {
