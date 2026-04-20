@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260418-047';
+    const VERSION = '20260420-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -510,6 +510,50 @@
         dispCtx.textAlign = 'center';
         dispCtx.textBaseline = 'middle';
         dispCtx.fillText(labels[i], centerX, centerY);
+      }
+
+      // ========== BL領域のグレースケール画像表示（デバッグ用） ==========
+      const blRect = detectionRects[3]; // BL は最後の矩形
+      const blA4Coords = blRect.map(c => ({ x: c.a4X, y: c.a4Y }));
+      const blA4MinX = Math.min(...blA4Coords.map(c => c.x));
+      const blA4MaxX = Math.max(...blA4Coords.map(c => c.x));
+      const blA4MinY = Math.min(...blA4Coords.map(c => c.y));
+      const blA4MaxY = Math.max(...blA4Coords.map(c => c.y));
+
+      // A4座標 → ビデオ座標に変換
+      const blVideoTL = a4ToVideo(blA4MinX, blA4MinY, videoW, videoH);
+      const blVideoBR = a4ToVideo(blA4MaxX, blA4MaxY, videoW, videoH);
+
+      const blVideoMinX = Math.round(Math.max(0, Math.min(blVideoTL.x, blVideoBR.x)));
+      const blVideoMaxX = Math.round(Math.min(videoW, Math.max(blVideoTL.x, blVideoBR.x)));
+      const blVideoMinY = Math.round(Math.max(0, Math.min(blVideoTL.y, blVideoBR.y)));
+      const blVideoMaxY = Math.round(Math.min(videoH, Math.max(blVideoTL.y, blVideoBR.y)));
+
+      const blVideoW = blVideoMaxX - blVideoMinX;
+      const blVideoH = blVideoMaxY - blVideoMinY;
+
+      if (blVideoW > 0 && blVideoH > 0) {
+        // グレースケール画像を ImageData に変換
+        const blImgData = dispCtx.createImageData(blVideoW, blVideoH);
+        const blData = blImgData.data;
+        for (let y = 0; y < blVideoH; y++) {
+          for (let x = 0; x < blVideoW; x++) {
+            const grayVal = gray[(blVideoMinY + y) * videoW + (blVideoMinX + x)];
+            const idx = (y * blVideoW + x) * 4;
+            blData[idx] = grayVal;     // R
+            blData[idx + 1] = grayVal; // G
+            blData[idx + 2] = grayVal; // B
+            blData[idx + 3] = 255;     // A
+          }
+        }
+
+        // BL領域のスクリーン座標を計算
+        const blScreenCorners = blA4Coords.map(c => a4ToScreen(c.x, c.y, displayScale, MARKER_DETECT_PARAMS));
+        const blScreenMinX = Math.min(...blScreenCorners.map(p => p.x));
+        const blScreenMinY = Math.min(...blScreenCorners.map(p => p.y));
+
+        // グレースケール画像を描画
+        dispCtx.putImageData(blImgData, blScreenMinX, blScreenMinY);
       }
 
       // ========== BL領域のコントラスト最大値 ==========
