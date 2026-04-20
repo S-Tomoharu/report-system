@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-004';
+    const VERSION = '20260420-005';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -536,29 +536,32 @@
       dispCtx.fillStyle = 'white';
       dispCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
-      // ビデオ座標全体を画面座標に縮小描画
-      // A4領域の四隅を画面座標に変換（スクリーン全体の領域を計算）
-      const fullScreenCorners = [
+      // ビデオ座標全体を画面座標に描画（ビデオ座標→画面座標の変換）
+      const videoScreenScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
+      const screenW = videoW * videoScreenScale;
+      const screenH = videoH * videoScreenScale;
+      const screenX = (window.innerWidth - screenW) / 2;
+      const screenY = (window.innerHeight - screenH) / 2;
+
+      // グレースケール映像を描画
+      dispCtx.drawImage(fullGrayCanvas, 0, 0, videoW, videoH, screenX, screenY, screenW, screenH);
+
+      // A4領域の枠を赤で強調（A4座標を画面座標に変換）
+      const a4ScreenCorners = [
         a4ToScreen(0, 0, displayScale, MARKER_DETECT_PARAMS),
         a4ToScreen(A4_WIDTH, 0, displayScale, MARKER_DETECT_PARAMS),
         a4ToScreen(A4_WIDTH, A4_HEIGHT, displayScale, MARKER_DETECT_PARAMS),
         a4ToScreen(0, A4_HEIGHT, displayScale, MARKER_DETECT_PARAMS)
       ];
-      const fullScreenMinX = Math.min(...fullScreenCorners.map(p => p.x));
-      const fullScreenMinY = Math.min(...fullScreenCorners.map(p => p.y));
-      const fullScreenMaxX = Math.max(...fullScreenCorners.map(p => p.x));
-      const fullScreenMaxY = Math.max(...fullScreenCorners.map(p => p.y));
-
-      const fullScreenW = fullScreenMaxX - fullScreenMinX;
-      const fullScreenH = fullScreenMaxY - fullScreenMinY;
-
-      // グレースケール映像を縮小描画
-      dispCtx.drawImage(fullGrayCanvas, 0, 0, videoW, videoH, fullScreenMinX, fullScreenMinY, fullScreenW, fullScreenH);
-
-      // A4領域の枠を赤で強調
       dispCtx.strokeStyle = 'red';
       dispCtx.lineWidth = 2;
-      dispCtx.strokeRect(fullScreenMinX, fullScreenMinY, fullScreenW, fullScreenH);
+      dispCtx.beginPath();
+      dispCtx.moveTo(a4ScreenCorners[0].x, a4ScreenCorners[0].y);
+      dispCtx.lineTo(a4ScreenCorners[1].x, a4ScreenCorners[1].y);
+      dispCtx.lineTo(a4ScreenCorners[2].x, a4ScreenCorners[2].y);
+      dispCtx.lineTo(a4ScreenCorners[3].x, a4ScreenCorners[3].y);
+      dispCtx.closePath();
+      dispCtx.stroke();
 
       // ========== BL領域のコントラスト最大値 ==========
       const blResult = scanBLRegion(videoW, videoH, gray, integ, W1, MARKER_DETECT_PARAMS);
