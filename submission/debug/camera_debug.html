@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-005';
+    const VERSION = '20260420-006';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -512,8 +512,36 @@
         dispCtx.fillText(labels[i], centerX, centerY);
       }
 
-      // ========== ビデオ座標全体のグレースケール映像表示（デバッグ用） ==========
-      // gray 配列全体を ImageData に変換
+      // ========== デバッグ用：4等分レイアウトで3つの画像を表示 ==========
+      const quarterW = window.innerWidth / 2;
+      const quarterH = window.innerHeight / 2;
+
+      // 背景：白で塗りつぶし
+      dispCtx.fillStyle = 'white';
+      dispCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+      // グリッドライン（4等分の境界）
+      dispCtx.strokeStyle = '#ccc';
+      dispCtx.lineWidth = 2;
+      dispCtx.beginPath();
+      dispCtx.moveTo(quarterW, 0);
+      dispCtx.lineTo(quarterW, window.innerHeight);
+      dispCtx.moveTo(0, quarterH);
+      dispCtx.lineTo(window.innerWidth, quarterH);
+      dispCtx.stroke();
+
+      // ========== 左上：video 要素（元の画像、RGB） ==========
+      dispCtx.drawImage(video, 0, 0, quarterW, quarterH);
+      dispCtx.fillStyle = 'black';
+      dispCtx.font = '14px monospace';
+      dispCtx.fillText('video (RGB)', 10, 25);
+
+      // ========== 右上：dataCanvas の内容（RGB） ==========
+      dispCtx.drawImage(dataCanvas, 0, 0, videoW, videoH, quarterW, 0, quarterW, quarterH);
+      dispCtx.fillStyle = 'black';
+      dispCtx.fillText('dataCanvas (RGB)', quarterW + 10, 25);
+
+      // ========== 左下：gray 配列から作成したグレースケール画像 ==========
       const fullGrayCanvas = document.createElement('canvas');
       fullGrayCanvas.width = videoW;
       fullGrayCanvas.height = videoH;
@@ -531,37 +559,13 @@
       }
       fullGrayCtx.putImageData(fullGrayImgData, 0, 0);
 
-      // ========== デバッグ用：グレースケール映像を前面に出す ==========
-      // 背景を白で塗りつぶし、グレースケール映像を全画面表示
-      dispCtx.fillStyle = 'white';
-      dispCtx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      dispCtx.drawImage(fullGrayCanvas, 0, 0, videoW, videoH, 0, quarterH, quarterW, quarterH);
+      dispCtx.fillStyle = 'black';
+      dispCtx.fillText('gray array (G/S)', 10, quarterH + 25);
 
-      // ビデオ座標全体を画面座標に描画（ビデオ座標→画面座標の変換）
-      const videoScreenScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
-      const screenW = videoW * videoScreenScale;
-      const screenH = videoH * videoScreenScale;
-      const screenX = (window.innerWidth - screenW) / 2;
-      const screenY = (window.innerHeight - screenH) / 2;
-
-      // グレースケール映像を描画
-      dispCtx.drawImage(fullGrayCanvas, 0, 0, videoW, videoH, screenX, screenY, screenW, screenH);
-
-      // A4領域の枠を赤で強調（A4座標を画面座標に変換）
-      const a4ScreenCorners = [
-        a4ToScreen(0, 0, displayScale, MARKER_DETECT_PARAMS),
-        a4ToScreen(A4_WIDTH, 0, displayScale, MARKER_DETECT_PARAMS),
-        a4ToScreen(A4_WIDTH, A4_HEIGHT, displayScale, MARKER_DETECT_PARAMS),
-        a4ToScreen(0, A4_HEIGHT, displayScale, MARKER_DETECT_PARAMS)
-      ];
-      dispCtx.strokeStyle = 'red';
-      dispCtx.lineWidth = 2;
-      dispCtx.beginPath();
-      dispCtx.moveTo(a4ScreenCorners[0].x, a4ScreenCorners[0].y);
-      dispCtx.lineTo(a4ScreenCorners[1].x, a4ScreenCorners[1].y);
-      dispCtx.lineTo(a4ScreenCorners[2].x, a4ScreenCorners[2].y);
-      dispCtx.lineTo(a4ScreenCorners[3].x, a4ScreenCorners[3].y);
-      dispCtx.closePath();
-      dispCtx.stroke();
+      // ========== 右下：(RGB) ラベル ==========
+      dispCtx.fillStyle = 'black';
+      dispCtx.fillText('(RGB)', quarterW + 10, quarterH + 25);
 
       // ========== BL領域のコントラスト最大値 ==========
       const blResult = scanBLRegion(videoW, videoH, gray, integ, W1, MARKER_DETECT_PARAMS);
