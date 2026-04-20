@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-012';
+    const VERSION = '20260420-013';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -704,7 +704,6 @@
           link.href = URL.createObjectURL(blob);
           link.download = `video_rgb_${timestamp}.png`;
           link.click();
-          URL.revokeObjectURL(link.href);
         }, 'image/png');
 
         // グレースケール画像をダウンロード
@@ -730,7 +729,6 @@
           link.href = URL.createObjectURL(blob);
           link.download = `video_gray_${timestamp}.png`;
           link.click();
-          URL.revokeObjectURL(link.href);
         }, 'image/png');
 
         console.log('[camera_debug] Downloaded RGB and grayscale images:', timestamp);
@@ -762,10 +760,10 @@
         window.opener.displayCapturedImage(imageSrc);
       }
 
-      // 自動クローズ
+      // 自動クローズ（ダウンロード完了を待つ）
       setTimeout(() => {
         window.close();
-      }, 1000);
+      }, 5000);
     });
 
     // ========== 閉じる ==========
