@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-010';
+    const VERSION = '20260420-011';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -367,8 +367,6 @@
       animId = requestAnimationFrame(processFrame);
       frameCount++;
 
-      displayCanvas.style.display = 'none';
-
       if (frameCount % 3 !== 0) return; // 3フレームごと
 
       if (videoW === 0 || videoH === 0) return;
@@ -535,38 +533,30 @@
       }
       fullGrayCtx.putImageData(fullGrayImgData, 0, 0);
 
-      // ========== 左側：video（RGB）の左半分 ==========
-      // video 全体をビデオ座標系の比率で左側に描画
-      const videoScreenScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
-      const screenW = videoW * videoScreenScale;
-      const screenH = videoH * videoScreenScale;
-      const screenX = (window.innerWidth - screenW) / 2;
-      const screenY = (window.innerHeight - screenH) / 2;
-
-      // 左側：video の左半分を描画（クリッピング）
-      dispCtx.save();
-      dispCtx.beginPath();
-      dispCtx.rect(0, 0, halfW, window.innerHeight);
-      dispCtx.clip();
-      dispCtx.drawImage(video, screenX, screenY, screenW, screenH);
-      dispCtx.restore();
-
-      // ========== 右側：gray 配列（G/S）の右半分 ==========
-      // 右側：gray 配列から作成したグレースケール画像の右半分を描画（クリッピング）
-      dispCtx.save();
-      dispCtx.beginPath();
-      dispCtx.rect(halfW, 0, halfW, window.innerHeight);
-      dispCtx.clip();
-      dispCtx.drawImage(fullGrayCanvas, 0, 0, videoW, videoH, screenX, screenY, screenW, screenH);
-      dispCtx.restore();
-
-      // 中央の境界線
-      dispCtx.strokeStyle = 'red';
-      dispCtx.lineWidth = 2;
-      dispCtx.beginPath();
-      dispCtx.moveTo(halfW, 0);
-      dispCtx.lineTo(halfW, window.innerHeight);
-      dispCtx.stroke();
+      // ========== 左側・右側split: 非表示 ==========
+      // const videoScreenScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
+      // const screenW = videoW * videoScreenScale;
+      // const screenH = videoH * videoScreenScale;
+      // const screenX = (window.innerWidth - screenW) / 2;
+      // const screenY = (window.innerHeight - screenH) / 2;
+      // dispCtx.save();
+      // dispCtx.beginPath();
+      // dispCtx.rect(0, 0, halfW, window.innerHeight);
+      // dispCtx.clip();
+      // dispCtx.drawImage(video, screenX, screenY, screenW, screenH);
+      // dispCtx.restore();
+      // dispCtx.save();
+      // dispCtx.beginPath();
+      // dispCtx.rect(halfW, 0, halfW, window.innerHeight);
+      // dispCtx.clip();
+      // dispCtx.drawImage(fullGrayCanvas, 0, 0, videoW, videoH, screenX, screenY, screenW, screenH);
+      // dispCtx.restore();
+      // dispCtx.strokeStyle = 'red';
+      // dispCtx.lineWidth = 2;
+      // dispCtx.beginPath();
+      // dispCtx.moveTo(halfW, 0);
+      // dispCtx.lineTo(halfW, window.innerHeight);
+      // dispCtx.stroke();
 
       // ========== BL領域のコントラスト最大値 ==========
       const blResult = scanBLRegion(videoW, videoH, gray, integ, W1, MARKER_DETECT_PARAMS);
