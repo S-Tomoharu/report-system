@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-009';
+    const VERSION = '20260420-010';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -366,6 +366,8 @@
 
       animId = requestAnimationFrame(processFrame);
       frameCount++;
+
+      displayCanvas.style.display = 'none';
 
       if (frameCount % 3 !== 0) return; // 3フレームごと
 
