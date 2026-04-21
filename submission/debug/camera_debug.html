@@ -14,7 +14,12 @@
     }
 
     #video {
-      display: none;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     #displayCanvas {
@@ -101,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-004';
+    const VERSION = '20260421-005';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -405,20 +410,6 @@
       displayCanvas.height = window.innerHeight;
       const dispCtx = displayCanvas.getContext('2d');
       dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
-
-      // ========== A4領域をdataCanvasから切り出して画面に描画（アスペクト比保持） ==========
-      const a4OffsetX = (videoW - A4_WIDTH) / 2;
-      const a4OffsetY = (videoH - A4_HEIGHT) / 2;
-      const a4Scale = Math.min(displayCanvas.width / A4_WIDTH, displayCanvas.height / A4_HEIGHT);
-      const a4DrawW = A4_WIDTH * a4Scale;
-      const a4DrawH = A4_HEIGHT * a4Scale;
-      const a4DrawX = (displayCanvas.width - a4DrawW) / 2;
-      const a4DrawY = (displayCanvas.height - a4DrawH) / 2;
-      dispCtx.drawImage(
-        dataCanvas,
-        a4OffsetX, a4OffsetY, A4_WIDTH, A4_HEIGHT,
-        a4DrawX, a4DrawY, a4DrawW, a4DrawH
-      );
 
       // displayScale が NaN なら画面に表示してデバッグ
       if (isNaN(displayScale)) {
