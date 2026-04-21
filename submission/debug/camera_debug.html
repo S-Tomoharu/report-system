@@ -14,12 +14,7 @@
     }
 
     #video {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
+      display: none;
     }
 
     #displayCanvas {
@@ -106,7 +101,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-002';
+    const VERSION = '20260421-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -195,16 +190,11 @@
     }
 
     // ========== 座標変換: A4座標 → 画面座標 ==========
-    // displayScale は processFrame() で計算して渡される
-    // ビデオ中央にA4が配置される前提
+    // A4領域が画面全体に表示される前提
     function a4ToScreen(a4X, a4Y, displayScale, params) {
-      const videoOffsetX = (videoW - A4_WIDTH) / 2;
-      const videoOffsetY = (videoH - A4_HEIGHT) / 2;
-      const videoX = a4X + videoOffsetX;
-      const videoY = a4Y + videoOffsetY;
       return {
-        x: videoX * displayScale + (window.innerWidth - videoW * displayScale) / 2,
-        y: videoY * displayScale + (window.innerHeight - videoH * displayScale) / 2 + params.VIDEO_OFFSET_Y
+        x: a4X * displayScale + (window.innerWidth - A4_WIDTH * displayScale) / 2,
+        y: a4Y * displayScale + (window.innerHeight - A4_HEIGHT * displayScale) / 2 + params.VIDEO_OFFSET_Y
       };
     }
 
@@ -407,8 +397,8 @@
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
       // 画面表示スケールを計算（1回だけ）
-      // ビデオ解像度基準でスケールを計算（object-fit: contain と一致）
-      const baseScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
+      // A4領域を画面全体に表示するのでA4基準
+      const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
       // 表示用キャンバス初期化
@@ -416,6 +406,15 @@
       displayCanvas.height = window.innerHeight;
       const dispCtx = displayCanvas.getContext('2d');
       dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+      // ========== A4領域をdataCanvasから切り出して画面全体に描画 ==========
+      const a4OffsetX = (videoW - A4_WIDTH) / 2;
+      const a4OffsetY = (videoH - A4_HEIGHT) / 2;
+      dispCtx.drawImage(
+        dataCanvas,
+        a4OffsetX, a4OffsetY, A4_WIDTH, A4_HEIGHT,
+        0, 0, displayCanvas.width, displayCanvas.height
+      );
 
       // displayScale が NaN なら画面に表示してデバッグ
       if (isNaN(displayScale)) {
