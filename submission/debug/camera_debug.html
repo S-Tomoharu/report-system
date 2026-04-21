@@ -101,7 +101,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-003';
+    const VERSION = '20260421-004';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -396,8 +396,7 @@
       // ウィンドウサイズ計算（A4座標系の幅に対する比率）
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
-      // 画面表示スケールを計算（1回だけ）
-      // A4領域を画面全体に表示するのでA4基準
+      // 画面表示スケールを計算（A4領域の表示スケールと同じ）
       const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
@@ -407,13 +406,18 @@
       const dispCtx = displayCanvas.getContext('2d');
       dispCtx.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
 
-      // ========== A4領域をdataCanvasから切り出して画面全体に描画 ==========
+      // ========== A4領域をdataCanvasから切り出して画面に描画（アスペクト比保持） ==========
       const a4OffsetX = (videoW - A4_WIDTH) / 2;
       const a4OffsetY = (videoH - A4_HEIGHT) / 2;
+      const a4Scale = Math.min(displayCanvas.width / A4_WIDTH, displayCanvas.height / A4_HEIGHT);
+      const a4DrawW = A4_WIDTH * a4Scale;
+      const a4DrawH = A4_HEIGHT * a4Scale;
+      const a4DrawX = (displayCanvas.width - a4DrawW) / 2;
+      const a4DrawY = (displayCanvas.height - a4DrawH) / 2;
       dispCtx.drawImage(
         dataCanvas,
         a4OffsetX, a4OffsetY, A4_WIDTH, A4_HEIGHT,
-        0, 0, displayCanvas.width, displayCanvas.height
+        a4DrawX, a4DrawY, a4DrawW, a4DrawH
       );
 
       // displayScale が NaN なら画面に表示してデバッグ
