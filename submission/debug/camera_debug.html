@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-005';
+    const VERSION = '20260421-006';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -685,74 +685,34 @@
     // ========== 撮影 ==========
     captureBtn.addEventListener('click', () => {
 
-      // 最新フレームデータから RGB と グレースケール を download
-      if (window.lastCaptureData) {
-        const { gray, videoW, videoH, dataCanvas } = window.lastCaptureData;
+      // RGB 画像を #video から直接取得してダウンロード
+      const rgbCanvas = document.createElement('canvas');
+      rgbCanvas.width = videoW;
+      rgbCanvas.height = videoH;
+      const rgbCtx = rgbCanvas.getContext('2d');
+      rgbCtx.drawImage(video, 0, 0, videoW, videoH);
 
-        // タイムスタンプ生成
-        const now = new Date();
-        const timestamp = now.getFullYear() +
-          String(now.getMonth() + 1).padStart(2, '0') +
-          String(now.getDate()).padStart(2, '0') + '_' +
-          String(now.getHours()).padStart(2, '0') +
-          String(now.getMinutes()).padStart(2, '0') +
-          String(now.getSeconds()).padStart(2, '0');
+      const now = new Date();
+      const timestamp = now.getFullYear() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') + '_' +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
 
-        // RGB 画像をダウンロード
-        dataCanvas.toBlob((rgbBlob) => {
-          console.log('[camera_debug] RGB blob size:', rgbBlob.size);
-          if (rgbBlob.size === 0) {
-            console.error('[camera_debug] RGB blob is empty!');
-            return;
-          }
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(rgbBlob);
-          link.download = `video_rgb_${timestamp}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          console.log('[camera_debug] RGB download triggered');
-
-          // RGB の後、グレースケール画像をダウンロード（delay 付き）
-          setTimeout(() => {
-            const grayCanvas = document.createElement('canvas');
-            grayCanvas.width = videoW;
-            grayCanvas.height = videoH;
-            const grayCtx = grayCanvas.getContext('2d');
-
-            const grayImgData = grayCtx.createImageData(videoW, videoH);
-            const grayData = grayImgData.data;
-            for (let i = 0; i < videoW * videoH; i++) {
-              const grayVal = gray[i];
-              const idx = i * 4;
-              grayData[idx] = grayVal;     // R
-              grayData[idx + 1] = grayVal; // G
-              grayData[idx + 2] = grayVal; // B
-              grayData[idx + 3] = 255;     // A
-            }
-            grayCtx.putImageData(grayImgData, 0, 0);
-
-            grayCanvas.toBlob((grayBlob) => {
-              console.log('[camera_debug] Gray blob size:', grayBlob.size);
-              if (grayBlob.size === 0) {
-                console.error('[camera_debug] Gray blob is empty!');
-                return;
-              }
-              const link = document.createElement('a');
-              link.href = URL.createObjectURL(grayBlob);
-              link.download = `video_gray_${timestamp}.png`;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              console.log('[camera_debug] Gray download triggered');
-            }, 'image/png');
-          }, 2000);
-        }, 'image/png');
-
-        console.log('[camera_debug] Downloaded RGB and grayscale images:', timestamp);
-      } else {
-        console.warn('[camera_debug] No capture data available');
-      }
+      rgbCanvas.toBlob((rgbBlob) => {
+        if (rgbBlob.size === 0) {
+          console.error('[camera_debug] RGB blob is empty!');
+          return;
+        }
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(rgbBlob);
+        link.download = `video_rgb_${timestamp}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log('[camera_debug] RGB download triggered');
+      }, 'image/png');
 
       // A4領域をトリミング（既存機能）
       const tempCanvas = document.createElement('canvas');
