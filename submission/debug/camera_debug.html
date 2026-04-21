@@ -14,7 +14,12 @@
     }
 
     #video {
-      display: none;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     #displayCanvas {
@@ -101,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-012';
+    const VERSION = '20260421-013';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -421,8 +426,12 @@
         console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
       }
 
-      // ========== グレースケール映像をdisplayCanvasに描画 ==========
-      const grayImgData = dispCtx.createImageData(rawVideoW, rawVideoH);
+      // ========== 四隅の領域だけグレースケールをdisplayCanvasに描画 ==========
+      const grayTempCanvas = document.createElement('canvas');
+      grayTempCanvas.width = rawVideoW;
+      grayTempCanvas.height = rawVideoH;
+      const grayTempCtx = grayTempCanvas.getContext('2d');
+      const grayImgData = grayTempCtx.createImageData(rawVideoW, rawVideoH);
       for (let i = 0; i < rawVideoW * rawVideoH; i++) {
         const grayVal = gray[i];
         grayImgData.data[i * 4]     = grayVal;
@@ -430,11 +439,40 @@
         grayImgData.data[i * 4 + 2] = grayVal;
         grayImgData.data[i * 4 + 3] = 255;
       }
-      const grayTempCanvas = document.createElement('canvas');
-      grayTempCanvas.width = rawVideoW;
-      grayTempCanvas.height = rawVideoH;
-      grayTempCanvas.getContext('2d').putImageData(grayImgData, 0, 0);
-      dispCtx.drawImage(grayTempCanvas, 0, 0, displayCanvas.width, displayCanvas.height);
+      grayTempCtx.putImageData(grayImgData, 0, 0);
+
+      // 画面スケール
+      const scaleX = displayCanvas.width / rawVideoW;
+      const scaleY = displayCanvas.height / rawVideoH;
+
+      // 四隅の領域をA4座標→データ座標→画面座標に変換して描画
+      const detectionRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
+      const rectW = A4_WIDTH * detectionRangeRatio;
+      const rectH = A4_HEIGHT * detectionRangeRatio;
+
+      const cornerRects = [
+        { a4X: 0,               a4Y: 0 },                // TL
+        { a4X: A4_WIDTH-rectW,  a4Y: 0 },                // TR
+        { a4X: A4_WIDTH-rectW,  a4Y: A4_HEIGHT-rectH },  // BR
+        { a4X: 0,               a4Y: A4_HEIGHT-rectH }   // BL
+      ];
+
+      for (const rect of cornerRects) {
+        const vidPt = a4ToVideo(rect.a4X, rect.a4Y, dataW, dataH);
+        const vidPt2 = a4ToVideo(rect.a4X + rectW, rect.a4Y + rectH, dataW, dataH);
+
+        const sx = vidPt.x;
+        const sy = vidPt.y;
+        const sw = vidPt2.x - vidPt.x;
+        const sh = vidPt2.y - vidPt.y;
+
+        const dx = sx * scaleX;
+        const dy = sy * scaleY;
+        const dw = sw * scaleX;
+        const dh = sh * scaleY;
+
+        dispCtx.drawImage(grayTempCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+      }
 
       // ========== A4枠の表示（白い矩形） ==========
       const a4Corners = [
