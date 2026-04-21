@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-001';
+    const VERSION = '20260421-002';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -165,6 +165,8 @@
     // ========== ビデオ解像度（初回取得後は固定） ==========
     let videoW = 0;
     let videoH = 0;
+    let rawVideoW = 0;
+    let rawVideoH = 0;
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
@@ -327,8 +329,8 @@
         console.log('[camera_debug] Setting up loadedmetadata listener');
         video.addEventListener('loadedmetadata', () => {
           // ビデオ解像度を一度だけ取得（初回のみ）
-          const rawVideoW = video.videoWidth;
-          const rawVideoH = video.videoHeight;
+          rawVideoW = video.videoWidth;
+          rawVideoH = video.videoHeight;
 
           // 機種依存対応：小さいほうを W、大きいほうを H に統一
           videoW = Math.min(rawVideoW, rawVideoH);
@@ -347,8 +349,8 @@
         setTimeout(() => {
           if (video.videoWidth > 0 && !animId) {
             // ビデオ解像度を一度だけ取得（初回のみ）
-            const rawVideoW = video.videoWidth;
-            const rawVideoH = video.videoHeight;
+            rawVideoW = video.videoWidth;
+            rawVideoH = video.videoHeight;
 
             // 機種依存対応：小さいほうを W、大きいほうを H に統一
             videoW = Math.min(rawVideoW, rawVideoH);
@@ -649,6 +651,7 @@
       const paramText = [
         `window.innerWidth: ${window.innerWidth}`,
         `window.innerHeight: ${window.innerHeight}`,
+        `rawVideoW: ${rawVideoW}, rawVideoH: ${rawVideoH}`,
         `videoW: ${videoW}, videoH: ${videoH}`,
         `baseScale (for a4ToScreen): ${baseScale.toFixed(4)}`,
         `videoScale (object-fit: cover): ${videoScaleCover.toFixed(4)}`,
