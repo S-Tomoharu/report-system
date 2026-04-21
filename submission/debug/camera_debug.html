@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-006';
+    const VERSION = '20260421-007';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -720,8 +720,6 @@
       tempCanvas.height = A4_HEIGHT;
       const tempCtx = tempCanvas.getContext('2d');
 
-      const videoW = video.videoWidth;
-      const videoH = video.videoHeight;
       const offsetX = (videoW - A4_WIDTH) / 2;
       const offsetY = (videoH - A4_HEIGHT) / 2;
 
