@@ -18,7 +18,7 @@
       inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
     }
 
@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260420-018';
+    const VERSION = '20260421-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -194,10 +194,15 @@
 
     // ========== 座標変換: A4座標 → 画面座標 ==========
     // displayScale は processFrame() で計算して渡される
+    // ビデオ中央にA4が配置される前提
     function a4ToScreen(a4X, a4Y, displayScale, params) {
+      const videoOffsetX = (videoW - A4_WIDTH) / 2;
+      const videoOffsetY = (videoH - A4_HEIGHT) / 2;
+      const videoX = a4X + videoOffsetX;
+      const videoY = a4Y + videoOffsetY;
       return {
-        x: displayScale * (a4X - A4_WIDTH / 2) + window.innerWidth / 2,
-        y: displayScale * (a4Y - A4_HEIGHT / 2) + window.innerHeight / 2 + params.VIDEO_OFFSET_Y
+        x: videoX * displayScale + (window.innerWidth - videoW * displayScale) / 2,
+        y: videoY * displayScale + (window.innerHeight - videoH * displayScale) / 2 + params.VIDEO_OFFSET_Y
       };
     }
 
@@ -322,15 +327,14 @@
         console.log('[camera_debug] Setting up loadedmetadata listener');
         video.addEventListener('loadedmetadata', () => {
           // ビデオ解像度を一度だけ取得（初回のみ）
-          videoW = video.videoWidth;
-          videoH = video.videoHeight;
+          const rawVideoW = video.videoWidth;
+          const rawVideoH = video.videoHeight;
 
           // 機種依存対応：小さいほうを W、大きいほうを H に統一
-          if (videoW > videoH) {
-            [videoW, videoH] = [videoH, videoW];
-          }
+          videoW = Math.min(rawVideoW, rawVideoH);
+          videoH = Math.max(rawVideoW, rawVideoH);
 
-          console.log(`[camera_debug] loadedmetadata event fired! Video: ${videoW}×${videoH}`);
+          console.log(`[camera_debug] loadedmetadata event fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
           processFrame();
         }, { once: true });
 
@@ -343,15 +347,14 @@
         setTimeout(() => {
           if (video.videoWidth > 0 && !animId) {
             // ビデオ解像度を一度だけ取得（初回のみ）
-            videoW = video.videoWidth;
-            videoH = video.videoHeight;
+            const rawVideoW = video.videoWidth;
+            const rawVideoH = video.videoHeight;
 
             // 機種依存対応：小さいほうを W、大きいほうを H に統一
-            if (videoW > videoH) {
-              [videoW, videoH] = [videoH, videoW];
-            }
+            videoW = Math.min(rawVideoW, rawVideoH);
+            videoH = Math.max(rawVideoW, rawVideoH);
 
-            console.log('[camera_debug] Fallback: loadedmetadata not fired, calling processFrame() manually');
+            console.log(`[camera_debug] Fallback: loadedmetadata not fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
             processFrame();
           }
         }, 1000);
@@ -377,8 +380,8 @@
         dataCanvas.height = videoH;
       }
 
-      // ビデオからピクセルデータ取得
-      dataCtx.drawImage(video, 0, 0, videoW, videoH);
+      // ビデオからピクセルデータ取得（実解像度で描画してからvideoW×videoHで取得）
+      dataCtx.drawImage(video, 0, 0, dataCanvas.width, dataCanvas.height);
       const imgData = dataCtx.getImageData(0, 0, videoW, videoH);
       const d = imgData.data;
 
@@ -402,8 +405,8 @@
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
       // 画面表示スケールを計算（1回だけ）
-      // A4座標系基準でスケールを計算（スマホ機種に動的対応）
-      const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT);
+      // ビデオ解像度基準でスケールを計算（object-fit: contain と一致）
+      const baseScale = Math.min(window.innerWidth / videoW, window.innerHeight / videoH);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
       // 表示用キャンバス初期化
