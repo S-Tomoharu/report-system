@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-007';
+    const VERSION = '20260421-008';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -185,9 +185,9 @@
     }
 
     // ========== 座標変換: A4座標 → ビデオ座標 ==========
-    function a4ToVideo(a4X, a4Y, videoW, videoH) {
-      const offsetX = (videoW - A4_WIDTH) / 2;
-      const offsetY = (videoH - A4_HEIGHT) / 2;
+    function a4ToVideo(a4X, a4Y, dW, dH) {
+      const offsetX = (dW - A4_WIDTH) / 2;
+      const offsetY = (dH - A4_HEIGHT) / 2;
       return {
         x: offsetX + a4X,
         y: offsetY + a4Y
@@ -371,29 +371,36 @@
 
       if (videoW === 0 || videoH === 0) return;
 
-      // データキャンバスをリサイズ
-      if (dataCanvas.width !== videoW || dataCanvas.height !== videoH) {
-        dataCanvas.width = videoW;
-        dataCanvas.height = videoH;
+      // データキャンバスをリサイズ（生データの解像度で）
+      if (dataCanvas.width !== rawVideoW || dataCanvas.height !== rawVideoH) {
+        dataCanvas.width = rawVideoW;
+        dataCanvas.height = rawVideoH;
       }
 
-      // ビデオからピクセルデータ取得（実解像度で描画してからvideoW×videoHで取得）
-      dataCtx.drawImage(video, 0, 0, dataCanvas.width, dataCanvas.height);
-      const imgData = dataCtx.getImageData(0, 0, videoW, videoH);
+      // ビデオから生データをそのまま描画
+      dataCtx.drawImage(video, 0, 0, rawVideoW, rawVideoH);
+      const imgData = dataCtx.getImageData(0, 0, rawVideoW, rawVideoH);
       const d = imgData.data;
 
+      // 横長・縦長に応じてA4のオフセットを計算
+      // rawVideoW > rawVideoH の場合、横長データなのでA4は横長の中央に配置
+      const dataW = rawVideoW;
+      const dataH = rawVideoH;
+      const a4VideoOffsetX = (dataW - A4_WIDTH) / 2;
+      const a4VideoOffsetY = (dataH - A4_HEIGHT) / 2;
+
       // ========== グレースケール＆積分画像を1回だけ計算 ==========
-      const gray = new Uint8Array(videoW * videoH);
-      for (let i = 0; i < videoW * videoH; i++) {
+      const gray = new Uint8Array(dataW * dataH);
+      for (let i = 0; i < dataW * dataH; i++) {
         const p = i * 4;
         gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
       }
 
-      const W1 = videoW + 1;
-      const integ = new Int32Array((videoH + 1) * W1);
-      for (let y = 1; y <= videoH; y++) {
-        for (let x = 1; x <= videoW; x++) {
-          integ[y * W1 + x] = gray[(y-1) * videoW + (x-1)]
+      const W1 = dataW + 1;
+      const integ = new Int32Array((dataH + 1) * W1);
+      for (let y = 1; y <= dataH; y++) {
+        for (let x = 1; x <= dataW; x++) {
+          integ[y * W1 + x] = gray[(y-1) * dataW + (x-1)]
             + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
         }
       }
@@ -558,7 +565,7 @@
       // dispCtx.stroke();
 
       // ========== BL領域のコントラスト最大値 ==========
-      const blResult = scanBLRegion(videoW, videoH, gray, integ, W1, MARKER_DETECT_PARAMS);
+      const blResult = scanBLRegion(dataW, dataH, gray, integ, W1, MARKER_DETECT_PARAMS);
       const blScreenPt = a4ToScreen(blResult.a4X, blResult.a4Y, displayScale, MARKER_DETECT_PARAMS);
 
       // 赤色の点を描画（半径8px）
@@ -579,11 +586,11 @@
       dispCtx.textAlign = 'left';
       dispCtx.textBaseline = 'top';
       for (const [key, point] of Object.entries(EVALUATION_POINTS)) {
-        // A4座標 → ビデオ座標（評価計算用）
-        const videoPt = a4ToVideo(point.a4X, point.a4Y, videoW, videoH);
+        // A4座標 → データ座標（評価計算用）
+        const videoPt = a4ToVideo(point.a4X, point.a4Y, dataW, dataH);
 
         // コントラスト計算
-        const contrast = calculateContrast(videoPt.x, videoPt.y, windowSize, gray, integ, videoW, videoH, W1, MARKER_DETECT_PARAMS);
+        const contrast = calculateContrast(videoPt.x, videoPt.y, windowSize, gray, integ, dataW, dataH, W1, MARKER_DETECT_PARAMS);
 
         // デバッグ：緑の点の情報を保存（画面表示用）
         if (key === 'green') {
@@ -687,10 +694,10 @@
 
       // RGB 画像を #video から直接取得してダウンロード
       const rgbCanvas = document.createElement('canvas');
-      rgbCanvas.width = videoW;
-      rgbCanvas.height = videoH;
+      rgbCanvas.width = rawVideoW;
+      rgbCanvas.height = rawVideoH;
       const rgbCtx = rgbCanvas.getContext('2d');
-      rgbCtx.drawImage(video, 0, 0, videoW, videoH);
+      rgbCtx.drawImage(video, 0, 0, rawVideoW, rawVideoH);
 
       const now = new Date();
       const timestamp = now.getFullYear() +
