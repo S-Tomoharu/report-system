@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-013';
+    const VERSION = '20260421-014';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -446,20 +446,20 @@
       const scaleY = displayCanvas.height / rawVideoH;
 
       // 四隅の領域をA4座標→データ座標→画面座標に変換して描画
-      const detectionRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
-      const rectW = A4_WIDTH * detectionRangeRatio;
-      const rectH = A4_HEIGHT * detectionRangeRatio;
+      const cornerRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
+      const cornerRectW = A4_WIDTH * cornerRangeRatio;
+      const cornerRectH = A4_HEIGHT * cornerRangeRatio;
 
       const cornerRects = [
-        { a4X: 0,               a4Y: 0 },                // TL
-        { a4X: A4_WIDTH-rectW,  a4Y: 0 },                // TR
-        { a4X: A4_WIDTH-rectW,  a4Y: A4_HEIGHT-rectH },  // BR
-        { a4X: 0,               a4Y: A4_HEIGHT-rectH }   // BL
+        { a4X: 0,                    a4Y: 0 },                       // TL
+        { a4X: A4_WIDTH-cornerRectW, a4Y: 0 },                       // TR
+        { a4X: A4_WIDTH-cornerRectW, a4Y: A4_HEIGHT-cornerRectH },   // BR
+        { a4X: 0,                    a4Y: A4_HEIGHT-cornerRectH }    // BL
       ];
 
       for (const rect of cornerRects) {
         const vidPt = a4ToVideo(rect.a4X, rect.a4Y, dataW, dataH);
-        const vidPt2 = a4ToVideo(rect.a4X + rectW, rect.a4Y + rectH, dataW, dataH);
+        const vidPt2 = a4ToVideo(rect.a4X + cornerRectW, rect.a4Y + cornerRectH, dataW, dataH);
 
         const sx = vidPt.x;
         const sy = vidPt.y;
