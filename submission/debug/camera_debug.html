@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260422-001';
+    const VERSION = '20260422-002';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -428,10 +428,40 @@
 
       // ========== dataCanvasに枠・グレースケールを描画してdisplayCanvasに転写 ==========
 
+      // スマホの向きを判定
+      const isLandscape = window.innerWidth > window.innerHeight;
+
       // #videoのcontain表示と同じスケール・オフセットを計算
-      const videoScale = Math.min(displayCanvas.width / rawVideoW, displayCanvas.height / rawVideoH);
-      const videoOffsetX = (displayCanvas.width - rawVideoW * videoScale) / 2;
-      const videoOffsetY = (displayCanvas.height - rawVideoH * videoScale) / 2;
+      // 横向きのときはビデオ座標を90度回転させた寸法で計算
+      const dispVideoW = isLandscape ? rawVideoH : rawVideoW;
+      const dispVideoH = isLandscape ? rawVideoW : rawVideoH;
+      const videoScale = Math.min(displayCanvas.width / dispVideoW, displayCanvas.height / dispVideoH);
+      const videoOffsetX = (displayCanvas.width  - dispVideoW * videoScale) / 2;
+      const videoOffsetY = (displayCanvas.height - dispVideoH * videoScale) / 2;
+
+      // ビデオ座標→画面座標の変換（向きを考慮）
+      function vidToScreen(vx, vy) {
+        if (isLandscape) {
+          // 90度回転：(vx, vy) → (rawVideoH - vy, vx)
+          const rx = rawVideoH - vy;
+          const ry = vx;
+          return {
+            x: rx * videoScale + videoOffsetX,
+            y: ry * videoScale + videoOffsetY
+          };
+        } else {
+          return {
+            x: vx * videoScale + videoOffsetX,
+            y: vy * videoScale + videoOffsetY
+          };
+        }
+      }
+
+      // A4座標→画面座標の変換
+      function a4ToScreenNew(a4X, a4Y) {
+        const vp = a4ToVideo(a4X, a4Y, dataW, dataH);
+        return vidToScreen(vp.x, vp.y);
+      }
 
       // グレースケール用の一時キャンバス（ビデオ座標系）
       const grayTempCanvas = document.createElement('canvas');
@@ -461,34 +491,34 @@
       ];
 
       for (const rect of cornerRects) {
-        const vidPt  = a4ToVideo(rect.a4X,              rect.a4Y,              dataW, dataH);
+        const vidPt  = a4ToVideo(rect.a4X,               rect.a4Y,               dataW, dataH);
         const vidPt2 = a4ToVideo(rect.a4X + cornerRectW, rect.a4Y + cornerRectH, dataW, dataH);
         const sx = vidPt.x,  sy = vidPt.y;
         const sw = vidPt2.x - vidPt.x, sh = vidPt2.y - vidPt.y;
-        const dx = sx * videoScale + videoOffsetX;
-        const dy = sy * videoScale + videoOffsetY;
-        const dw = sw * videoScale, dh = sh * videoScale;
+        const dp1 = vidToScreen(vidPt.x,  vidPt.y);
+        const dp2 = vidToScreen(vidPt2.x, vidPt2.y);
+        const dx = Math.min(dp1.x, dp2.x);
+        const dy = Math.min(dp1.y, dp2.y);
+        const dw = Math.abs(dp2.x - dp1.x);
+        const dh = Math.abs(dp2.y - dp1.y);
         dispCtx.drawImage(grayTempCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
       }
 
       // ========== A4白枠をビデオ座標系で描画 ==========
-      const a4Corners = [
-        a4ToVideo(0,        0,         dataW, dataH),
-        a4ToVideo(A4_WIDTH, 0,         dataW, dataH),
-        a4ToVideo(A4_WIDTH, A4_HEIGHT, dataW, dataH),
-        a4ToVideo(0,        A4_HEIGHT, dataW, dataH)
-      ].map(p => ({
-        x: p.x * videoScale + videoOffsetX,
-        y: p.y * videoScale + videoOffsetY
-      }));
+      const a4ScreenCorners = [
+        a4ToScreenNew(0,        0        ),
+        a4ToScreenNew(A4_WIDTH, 0        ),
+        a4ToScreenNew(A4_WIDTH, A4_HEIGHT),
+        a4ToScreenNew(0,        A4_HEIGHT)
+      ];
 
       dispCtx.strokeStyle = 'white';
       dispCtx.lineWidth = 2;
       dispCtx.beginPath();
-      dispCtx.moveTo(a4Corners[0].x, a4Corners[0].y);
-      dispCtx.lineTo(a4Corners[1].x, a4Corners[1].y);
-      dispCtx.lineTo(a4Corners[2].x, a4Corners[2].y);
-      dispCtx.lineTo(a4Corners[3].x, a4Corners[3].y);
+      dispCtx.moveTo(a4ScreenCorners[0].x, a4ScreenCorners[0].y);
+      dispCtx.lineTo(a4ScreenCorners[1].x, a4ScreenCorners[1].y);
+      dispCtx.lineTo(a4ScreenCorners[2].x, a4ScreenCorners[2].y);
+      dispCtx.lineTo(a4ScreenCorners[3].x, a4ScreenCorners[3].y);
       dispCtx.closePath();
       dispCtx.stroke();
 
@@ -509,12 +539,12 @@
       const labels = ['TL', 'TR', 'BR', 'BL'];
       for (let i = 0; i < detectionRects.length; i++) {
         const [tl, br] = detectionRects[i];
-        const p1 = a4ToVideo(tl.a4X, tl.a4Y, dataW, dataH);
-        const p2 = a4ToVideo(br.a4X, br.a4Y, dataW, dataH);
-        const x1 = p1.x * videoScale + videoOffsetX;
-        const y1 = p1.y * videoScale + videoOffsetY;
-        const x2 = p2.x * videoScale + videoOffsetX;
-        const y2 = p2.y * videoScale + videoOffsetY;
+        const p1 = a4ToScreenNew(tl.a4X, tl.a4Y);
+        const p2 = a4ToScreenNew(br.a4X, br.a4Y);
+        const x1 = Math.min(p1.x, p2.x);
+        const y1 = Math.min(p1.y, p2.y);
+        const x2 = Math.max(p1.x, p2.x);
+        const y2 = Math.max(p1.y, p2.y);
         dispCtx.strokeRect(x1, y1, x2-x1, y2-y1);
         dispCtx.fillStyle = 'yellow';
         dispCtx.font = 'bold 16px monospace';
@@ -572,20 +602,19 @@
       // ========== BL領域のコントラスト最大値 ==========
       const blResult = scanBLRegion(dataW, dataH, gray, integ, W1, MARKER_DETECT_PARAMS);
       const blVidPt = a4ToVideo(blResult.a4X, blResult.a4Y, dataW, dataH);
-      const blScreenX = blVidPt.x * videoScale + videoOffsetX;
-      const blScreenY = blVidPt.y * videoScale + videoOffsetY;
+      const blScreen = vidToScreen(blVidPt.x, blVidPt.y);
 
       // 赤色の点を描画（半径8px）
       dispCtx.fillStyle = 'red';
       dispCtx.beginPath();
-      dispCtx.arc(blScreenX, blScreenY, 8, 0, 2 * Math.PI);
+      dispCtx.arc(blScreen.x, blScreen.y, 8, 0, 2 * Math.PI);
       dispCtx.fill();
 
       dispCtx.fillStyle = 'red';
       dispCtx.font = 'bold 14px monospace';
       dispCtx.textAlign = 'left';
       dispCtx.textBaseline = 'top';
-      dispCtx.fillText(`C=${blResult.contrast.toFixed(1)}`, blScreenX + 12, blScreenY - 10);
+      dispCtx.fillText(`C=${blResult.contrast.toFixed(1)}`, blScreen.x + 12, blScreen.y - 10);
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
@@ -611,8 +640,9 @@
         }
 
         // ビデオ座標 → 画面座標（表示用）
-        const screenX = videoPt.x * videoScale + videoOffsetX;
-        const screenY = videoPt.y * videoScale + videoOffsetY;
+        const screenPt = vidToScreen(videoPt.x, videoPt.y);
+        const screenX = screenPt.x;
+        const screenY = screenPt.y;
 
         // 画面での描画サイズ
         const screenWindowSize = windowSize * videoScale;
