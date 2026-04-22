@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-002';
+    const VERSION = '20260423-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -188,6 +188,7 @@
     // ========== 自動撮影管理 ==========
     let consecutiveDetectCount = 0;
     let isConfirming = false;
+    let lastCornerVideoPoints = null; // 4隅のビデオ座標を保存
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
@@ -640,6 +641,11 @@
 
       // 4隅全部が閾値を超えているか
       const allDetected = cornerResults.every(r => r.contrast >= MARKER_DETECT_PARAMS.AUTO_CAPTURE_THRESHOLD);
+
+      // 4隅のビデオ座標を保存（TL・TR・BR・BL順）
+      if (allDetected) {
+        lastCornerVideoPoints = cornerResults.map(r => ({ x: r.videoX, y: r.videoY }));
+      }
       if (allDetected && !isConfirming) {
         consecutiveDetectCount++;
       } else if (!isConfirming) {
@@ -772,20 +778,92 @@
       window.lastCaptureData = { gray, videoW, videoH, dataCanvas };
     }
 
+    // ========== 透視変換（傾き補正） ==========
+    function solveLinear(A, b) {
+      const n = 8;
+      const M = A.map((r, i) => [...r, b[i]]);
+      for (let c = 0; c < n; c++) {
+        let p = c;
+        for (let r = c+1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+        [M[c], M[p]] = [M[p], M[c]];
+        for (let r = 0; r < n; r++) {
+          if (r === c || M[r][c] === 0) continue;
+          const f = M[r][c] / M[c][c];
+          for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j];
+        }
+      }
+      return M.map((r, i) => r[n] / r[i]);
+    }
+
+    function computeHomography(src, dst) {
+      const A = [], b = [];
+      for (let i = 0; i < 4; i++) {
+        const {x: x1, y: y1} = src[i], {x: x2, y: y2} = dst[i];
+        A.push([x1, y1, 1, 0, 0, 0, -x2*x1, -x2*y1]); b.push(x2);
+        A.push([0, 0, 0, x1, y1, 1, -y2*x1, -y2*y1]); b.push(y2);
+      }
+      return solveLinear(A, b);
+    }
+
+    async function warpPerspective(srcCvs, srcPts, dstPts, dstW, dstH) {
+      await new Promise(r => setTimeout(r, 0));
+      const H = computeHomography(dstPts, srcPts);
+      const outCvs = document.createElement('canvas');
+      outCvs.width = dstW; outCvs.height = dstH;
+      const sd = srcCvs.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, srcCvs.width, srcCvs.height).data;
+      const outCtx = outCvs.getContext('2d', { willReadFrequently: true });
+      const od = outCtx.createImageData(dstW, dstH);
+      const sw = srcCvs.width, sh = srcCvs.height;
+      for (let y = 0; y < dstH; y++) {
+        for (let x = 0; x < dstW; x++) {
+          const w_ = H[6]*x + H[7]*y + 1;
+          const sx = Math.round((H[0]*x + H[1]*y + H[2]) / w_);
+          const sy = Math.round((H[3]*x + H[4]*y + H[5]) / w_);
+          const oi = (y * dstW + x) * 4;
+          if (sx >= 0 && sx < sw && sy >= 0 && sy < sh) {
+            const si = (sy * sw + sx) * 4;
+            od.data[oi]   = sd[si];
+            od.data[oi+1] = sd[si+1];
+            od.data[oi+2] = sd[si+2];
+            od.data[oi+3] = 255;
+          } else {
+            od.data[oi] = od.data[oi+1] = od.data[oi+2] = 255;
+            od.data[oi+3] = 255;
+          }
+        }
+      }
+      outCtx.putImageData(od, 0, 0);
+      return outCvs;
+    }
+
     // ========== 自動撮影 ==========
-    function triggerAutoCapture() {
+    async function triggerAutoCapture() {
       isConfirming = true;
 
-      // トリミング画像を生成
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = A4_WIDTH;
-      tempCanvas.height = A4_HEIGHT;
-      const tempCtx = tempCanvas.getContext('2d');
-      const offsetX = (rawVideoW - A4_WIDTH) / 2;
-      const offsetY = (rawVideoH - A4_HEIGHT) / 2;
-      tempCtx.drawImage(dataCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
+      // 4隅のビデオ座標から透視変換（傾き補正）
+      let warpedCanvas;
+      if (lastCornerVideoPoints && lastCornerVideoPoints.length === 4) {
+        // srcPts: TL・TR・BR・BLのビデオ座標
+        const srcPts = lastCornerVideoPoints;
+        // dstPts: A4座標の四隅
+        const dstPts = [
+          { x: 0,        y: 0         }, // TL
+          { x: A4_WIDTH, y: 0         }, // TR
+          { x: A4_WIDTH, y: A4_HEIGHT }, // BR
+          { x: 0,        y: A4_HEIGHT }  // BL
+        ];
+        warpedCanvas = await warpPerspective(dataCanvas, srcPts, dstPts, A4_WIDTH, A4_HEIGHT);
+      } else {
+        // フォールバック：単純トリミング
+        warpedCanvas = document.createElement('canvas');
+        warpedCanvas.width = A4_WIDTH;
+        warpedCanvas.height = A4_HEIGHT;
+        const offsetX = (rawVideoW - A4_WIDTH) / 2;
+        const offsetY = (rawVideoH - A4_HEIGHT) / 2;
+        warpedCanvas.getContext('2d').drawImage(dataCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
+      }
 
-      const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+      const imageSrc = warpedCanvas.toDataURL('image/jpeg', 0.9);
 
       // 確認ダイアログを表示
       document.getElementById('confirmImage').src = imageSrc;
@@ -817,7 +895,7 @@
         grayCanvas.width = A4_WIDTH;
         grayCanvas.height = A4_HEIGHT;
         const grayCtx = grayCanvas.getContext('2d');
-        grayCtx.drawImage(tempCanvas, 0, 0);
+        grayCtx.drawImage(warpedCanvas, 0, 0);
         const grayImgData = grayCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
         for (let i = 0; i < grayImgData.data.length; i += 4) {
           const g = Math.round(grayImgData.data[i] * 0.299 + grayImgData.data[i+1] * 0.587 + grayImgData.data[i+2] * 0.114);
@@ -827,16 +905,39 @@
         }
         grayCtx.putImageData(grayImgData, 0, 0);
 
-        // 白黒画像を生成（閾値128）
+        // 白黒画像を生成（大津の二値化）
         const bwCanvas = document.createElement('canvas');
         bwCanvas.width = A4_WIDTH;
         bwCanvas.height = A4_HEIGHT;
         const bwCtx = bwCanvas.getContext('2d');
-        bwCtx.drawImage(tempCanvas, 0, 0);
+        bwCtx.drawImage(warpedCanvas, 0, 0);
         const bwImgData = bwCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
+
+        // 大津の二値化で閾値を自動決定
+        const hist = new Array(256).fill(0);
         for (let i = 0; i < bwImgData.data.length; i += 4) {
           const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
-          const bw = g > 128 ? 255 : 0;
+          hist[g]++;
+        }
+        const total = A4_WIDTH * A4_HEIGHT;
+        let sum = 0;
+        for (let i = 0; i < 256; i++) sum += i * hist[i];
+        let sumB = 0, wB = 0, maxVar = 0, threshold = 128;
+        for (let t = 0; t < 256; t++) {
+          wB += hist[t];
+          if (wB === 0) continue;
+          const wF = total - wB;
+          if (wF === 0) break;
+          sumB += t * hist[t];
+          const mB = sumB / wB;
+          const mF = (sum - sumB) / wF;
+          const varBetween = wB * wF * (mB - mF) * (mB - mF);
+          if (varBetween > maxVar) { maxVar = varBetween; threshold = t; }
+        }
+
+        for (let i = 0; i < bwImgData.data.length; i += 4) {
+          const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
+          const bw = g > threshold ? 255 : 0;
           bwImgData.data[i] = bw;
           bwImgData.data[i+1] = bw;
           bwImgData.data[i+2] = bw;
@@ -844,13 +945,13 @@
         bwCtx.putImageData(bwImgData, 0, 0);
 
         // 時間差でダウンロード
-        tempCanvas.toBlob((blob) => downloadBlob(blob, `report_rgb_${timestamp}.png`), 'image/png');
+        warpedCanvas.toBlob((blob) => downloadBlob(blob, `report_rgb_${timestamp}.png`), 'image/png');
         setTimeout(() => {
           grayCanvas.toBlob((blob) => downloadBlob(blob, `report_gray_${timestamp}.png`), 'image/png');
-        }, 500);
+        }, 1000);
         setTimeout(() => {
           bwCanvas.toBlob((blob) => downloadBlob(blob, `report_bw_${timestamp}.png`), 'image/png');
-        }, 1000);
+        }, 2000);
       };
 
       document.getElementById('confirmRetryBtn').onclick = () => {
