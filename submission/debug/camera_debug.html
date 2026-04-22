@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260421-014';
+    const VERSION = '20260422-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -426,7 +426,14 @@
         console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
       }
 
-      // ========== 四隅の領域だけグレースケールをdisplayCanvasに描画 ==========
+      // ========== dataCanvasに枠・グレースケールを描画してdisplayCanvasに転写 ==========
+
+      // #videoのcontain表示と同じスケール・オフセットを計算
+      const videoScale = Math.min(displayCanvas.width / rawVideoW, displayCanvas.height / rawVideoH);
+      const videoOffsetX = (displayCanvas.width - rawVideoW * videoScale) / 2;
+      const videoOffsetY = (displayCanvas.height - rawVideoH * videoScale) / 2;
+
+      // グレースケール用の一時キャンバス（ビデオ座標系）
       const grayTempCanvas = document.createElement('canvas');
       grayTempCanvas.width = rawVideoW;
       grayTempCanvas.height = rawVideoH;
@@ -441,129 +448,79 @@
       }
       grayTempCtx.putImageData(grayImgData, 0, 0);
 
-      // 画面スケール
-      const scaleX = displayCanvas.width / rawVideoW;
-      const scaleY = displayCanvas.height / rawVideoH;
-
-      // 四隅の領域をA4座標→データ座標→画面座標に変換して描画
+      // 四隅のグレースケールをdisplayCanvasに描画（ビデオ座標→画面座標）
       const cornerRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
       const cornerRectW = A4_WIDTH * cornerRangeRatio;
       const cornerRectH = A4_HEIGHT * cornerRangeRatio;
 
       const cornerRects = [
-        { a4X: 0,                    a4Y: 0 },                       // TL
-        { a4X: A4_WIDTH-cornerRectW, a4Y: 0 },                       // TR
-        { a4X: A4_WIDTH-cornerRectW, a4Y: A4_HEIGHT-cornerRectH },   // BR
-        { a4X: 0,                    a4Y: A4_HEIGHT-cornerRectH }    // BL
+        { a4X: 0,                    a4Y: 0 },
+        { a4X: A4_WIDTH-cornerRectW, a4Y: 0 },
+        { a4X: A4_WIDTH-cornerRectW, a4Y: A4_HEIGHT-cornerRectH },
+        { a4X: 0,                    a4Y: A4_HEIGHT-cornerRectH }
       ];
 
       for (const rect of cornerRects) {
-        const vidPt = a4ToVideo(rect.a4X, rect.a4Y, dataW, dataH);
+        const vidPt  = a4ToVideo(rect.a4X,              rect.a4Y,              dataW, dataH);
         const vidPt2 = a4ToVideo(rect.a4X + cornerRectW, rect.a4Y + cornerRectH, dataW, dataH);
-
-        const sx = vidPt.x;
-        const sy = vidPt.y;
-        const sw = vidPt2.x - vidPt.x;
-        const sh = vidPt2.y - vidPt.y;
-
-        const dx = sx * scaleX;
-        const dy = sy * scaleY;
-        const dw = sw * scaleX;
-        const dh = sh * scaleY;
-
+        const sx = vidPt.x,  sy = vidPt.y;
+        const sw = vidPt2.x - vidPt.x, sh = vidPt2.y - vidPt.y;
+        const dx = sx * videoScale + videoOffsetX;
+        const dy = sy * videoScale + videoOffsetY;
+        const dw = sw * videoScale, dh = sh * videoScale;
         dispCtx.drawImage(grayTempCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
       }
 
-      // ========== A4枠の表示（白い矩形） ==========
+      // ========== A4白枠をビデオ座標系で描画 ==========
       const a4Corners = [
-        { a4X: 0, a4Y: 0 },           // 左上
-        { a4X: 1080, a4Y: 0 },        // 右上
-        { a4X: 1080, a4Y: 1527 },     // 右下
-        { a4X: 0, a4Y: 1527 }         // 左下
-      ];
+        a4ToVideo(0,        0,         dataW, dataH),
+        a4ToVideo(A4_WIDTH, 0,         dataW, dataH),
+        a4ToVideo(A4_WIDTH, A4_HEIGHT, dataW, dataH),
+        a4ToVideo(0,        A4_HEIGHT, dataW, dataH)
+      ].map(p => ({
+        x: p.x * videoScale + videoOffsetX,
+        y: p.y * videoScale + videoOffsetY
+      }));
 
-      const screenCorners = [];
-      for (const corner of a4Corners) {
-        const screenPt = a4ToScreen(corner.a4X, corner.a4Y, displayScale, MARKER_DETECT_PARAMS);
-        screenCorners.push(screenPt);
-      }
-
-      // 白い矩形枠を描画
       dispCtx.strokeStyle = 'white';
       dispCtx.lineWidth = 2;
       dispCtx.beginPath();
-      dispCtx.moveTo(screenCorners[0].x, screenCorners[0].y);  // 左上
-      dispCtx.lineTo(screenCorners[1].x, screenCorners[1].y);  // 右上
-      dispCtx.lineTo(screenCorners[2].x, screenCorners[2].y);  // 右下
-      dispCtx.lineTo(screenCorners[3].x, screenCorners[3].y);  // 左下
-      dispCtx.lineTo(screenCorners[0].x, screenCorners[0].y);  // 左上に戻る
+      dispCtx.moveTo(a4Corners[0].x, a4Corners[0].y);
+      dispCtx.lineTo(a4Corners[1].x, a4Corners[1].y);
+      dispCtx.lineTo(a4Corners[2].x, a4Corners[2].y);
+      dispCtx.lineTo(a4Corners[3].x, a4Corners[3].y);
+      dispCtx.closePath();
       dispCtx.stroke();
 
-      // ========== 黄色い矩形（A4の4つの角） ==========
+      // ========== 黄色い枠をビデオ座標系で描画 ==========
       const detectionRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
-      const rectWidth = A4_WIDTH * detectionRangeRatio;
+      const rectWidth  = A4_WIDTH  * detectionRangeRatio;
       const rectHeight = A4_HEIGHT * detectionRangeRatio;
 
-      // 4つの角の矩形定義
       const detectionRects = [
-        // 左上
-        [
-          { a4X: 0, a4Y: 0 },
-          { a4X: rectWidth, a4Y: 0 },
-          { a4X: rectWidth, a4Y: rectHeight },
-          { a4X: 0, a4Y: rectHeight }
-        ],
-        // 右上
-        [
-          { a4X: A4_WIDTH - rectWidth, a4Y: 0 },
-          { a4X: A4_WIDTH, a4Y: 0 },
-          { a4X: A4_WIDTH, a4Y: rectHeight },
-          { a4X: A4_WIDTH - rectWidth, a4Y: rectHeight }
-        ],
-        // 右下
-        [
-          { a4X: A4_WIDTH - rectWidth, a4Y: A4_HEIGHT - rectHeight },
-          { a4X: A4_WIDTH, a4Y: A4_HEIGHT - rectHeight },
-          { a4X: A4_WIDTH, a4Y: A4_HEIGHT },
-          { a4X: A4_WIDTH - rectWidth, a4Y: A4_HEIGHT }
-        ],
-        // 左下
-        [
-          { a4X: 0, a4Y: A4_HEIGHT - rectHeight },
-          { a4X: rectWidth, a4Y: A4_HEIGHT - rectHeight },
-          { a4X: rectWidth, a4Y: A4_HEIGHT },
-          { a4X: 0, a4Y: A4_HEIGHT }
-        ]
+        [{ a4X: 0,               a4Y: 0           }, { a4X: rectWidth,    a4Y: rectHeight   }],
+        [{ a4X: A4_WIDTH-rectWidth, a4Y: 0         }, { a4X: A4_WIDTH,     a4Y: rectHeight   }],
+        [{ a4X: A4_WIDTH-rectWidth, a4Y: A4_HEIGHT-rectHeight }, { a4X: A4_WIDTH, a4Y: A4_HEIGHT }],
+        [{ a4X: 0,               a4Y: A4_HEIGHT-rectHeight }, { a4X: rectWidth, a4Y: A4_HEIGHT }]
       ];
 
-      // 各矩形を黄色い枠で描画
       dispCtx.strokeStyle = 'yellow';
       dispCtx.lineWidth = 2;
       const labels = ['TL', 'TR', 'BR', 'BL'];
       for (let i = 0; i < detectionRects.length; i++) {
-        const rectCorners = detectionRects[i];
-        const screenCorners = [];
-        for (const corner of rectCorners) {
-          const screenPt = a4ToScreen(corner.a4X, corner.a4Y, displayScale, MARKER_DETECT_PARAMS);
-          screenCorners.push(screenPt);
-        }
-
-        dispCtx.beginPath();
-        dispCtx.moveTo(screenCorners[0].x, screenCorners[0].y);
-        dispCtx.lineTo(screenCorners[1].x, screenCorners[1].y);
-        dispCtx.lineTo(screenCorners[2].x, screenCorners[2].y);
-        dispCtx.lineTo(screenCorners[3].x, screenCorners[3].y);
-        dispCtx.closePath();
-        dispCtx.stroke();
-
-        // 矩形の中心にラベルを描画
-        const centerX = (screenCorners[0].x + screenCorners[1].x + screenCorners[2].x + screenCorners[3].x) / 4;
-        const centerY = (screenCorners[0].y + screenCorners[1].y + screenCorners[2].y + screenCorners[3].y) / 4;
+        const [tl, br] = detectionRects[i];
+        const p1 = a4ToVideo(tl.a4X, tl.a4Y, dataW, dataH);
+        const p2 = a4ToVideo(br.a4X, br.a4Y, dataW, dataH);
+        const x1 = p1.x * videoScale + videoOffsetX;
+        const y1 = p1.y * videoScale + videoOffsetY;
+        const x2 = p2.x * videoScale + videoOffsetX;
+        const y2 = p2.y * videoScale + videoOffsetY;
+        dispCtx.strokeRect(x1, y1, x2-x1, y2-y1);
         dispCtx.fillStyle = 'yellow';
         dispCtx.font = 'bold 16px monospace';
         dispCtx.textAlign = 'center';
         dispCtx.textBaseline = 'middle';
-        dispCtx.fillText(labels[i], centerX, centerY);
+        dispCtx.fillText(labels[i], (x1+x2)/2, (y1+y2)/2);
       }
 
       // ========== デバッグ用：左右分割（video RGB の左半分 + gray G/S の右半分） ==========
@@ -614,20 +571,21 @@
 
       // ========== BL領域のコントラスト最大値 ==========
       const blResult = scanBLRegion(dataW, dataH, gray, integ, W1, MARKER_DETECT_PARAMS);
-      const blScreenPt = a4ToScreen(blResult.a4X, blResult.a4Y, displayScale, MARKER_DETECT_PARAMS);
+      const blVidPt = a4ToVideo(blResult.a4X, blResult.a4Y, dataW, dataH);
+      const blScreenX = blVidPt.x * videoScale + videoOffsetX;
+      const blScreenY = blVidPt.y * videoScale + videoOffsetY;
 
       // 赤色の点を描画（半径8px）
       dispCtx.fillStyle = 'red';
       dispCtx.beginPath();
-      dispCtx.arc(blScreenPt.x, blScreenPt.y, 8, 0, 2 * Math.PI);
+      dispCtx.arc(blScreenX, blScreenY, 8, 0, 2 * Math.PI);
       dispCtx.fill();
 
-      // コントラスト値を赤色で表示
       dispCtx.fillStyle = 'red';
       dispCtx.font = 'bold 14px monospace';
       dispCtx.textAlign = 'left';
       dispCtx.textBaseline = 'top';
-      dispCtx.fillText(`C=${blResult.contrast.toFixed(1)}`, blScreenPt.x + 12, blScreenPt.y - 10);
+      dispCtx.fillText(`C=${blResult.contrast.toFixed(1)}`, blScreenX + 12, blScreenY - 10);
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
@@ -652,11 +610,12 @@
           };
         }
 
-        // A4座標 → 画面座標（表示用）
-        const screenPt = a4ToScreen(point.a4X, point.a4Y, displayScale, MARKER_DETECT_PARAMS);
+        // ビデオ座標 → 画面座標（表示用）
+        const screenX = videoPt.x * videoScale + videoOffsetX;
+        const screenY = videoPt.y * videoScale + videoOffsetY;
 
-        // 画面での描画サイズ（displayScale を使用）
-        const screenWindowSize = windowSize * displayScale;
+        // 画面での描画サイズ
+        const screenWindowSize = windowSize * videoScale;
 
         // 色決定
         let color;
@@ -667,7 +626,7 @@
         // 枠描画
         dispCtx.strokeStyle = color;
         dispCtx.lineWidth = 2;
-        dispCtx.strokeRect(screenPt.x, screenPt.y, screenWindowSize, screenWindowSize);
+        dispCtx.strokeRect(screenX, screenY, screenWindowSize, screenWindowSize);
 
         // テキスト描画
         dispCtx.fillStyle = color;
@@ -680,9 +639,9 @@
           `C=${contrast.C}`
         ];
 
-        let textY = screenPt.y - 50;
+        let textY = screenY - 50;
         for (const line of lines) {
-          dispCtx.fillText(line, screenPt.x, textY);
+          dispCtx.fillText(line, screenX, textY);
           textY += 16;
         }
       }
