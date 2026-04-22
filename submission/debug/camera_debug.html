@@ -106,7 +106,7 @@
   </div>
 
   <script>
-    const VERSION = '20260422-002';
+    const VERSION = '20260422-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -758,22 +758,33 @@
         console.log('[camera_debug] RGB download triggered');
       }, 'image/png');
 
-      // A4領域をトリミング（既存機能）
+      // A4領域をトリミング（dataCanvasから切り出し）
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = A4_WIDTH;
       tempCanvas.height = A4_HEIGHT;
       const tempCtx = tempCanvas.getContext('2d');
 
-      const offsetX = (videoW - A4_WIDTH) / 2;
-      const offsetY = (videoH - A4_HEIGHT) / 2;
+      const offsetX = (rawVideoW - A4_WIDTH) / 2;
+      const offsetY = (rawVideoH - A4_HEIGHT) / 2;
 
       tempCtx.drawImage(
-        video,
+        dataCanvas,
         offsetX, offsetY, A4_WIDTH, A4_HEIGHT,
         0, 0, A4_WIDTH, A4_HEIGHT
       );
 
       const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+
+      // トリミング画像をダウンロードして確認
+      tempCanvas.toBlob((trimBlob) => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(trimBlob);
+        link.download = `video_trim_${timestamp}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log('[camera_debug] Trim download triggered');
+      }, 'image/png');
 
       // opener に通知
       if (window.opener && window.opener.displayCapturedImage) {
