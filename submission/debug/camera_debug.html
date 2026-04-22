@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260422-005';
+    const VERSION = '20260422-006';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -773,53 +773,124 @@
     }
 
     // ========== 自動撮影 ==========
-    function triggerAutoCapture() {
+    async function triggerAutoCapture() {
       isConfirming = true;
 
-      // トリミング画像を生成
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = A4_WIDTH;
-      tempCanvas.height = A4_HEIGHT;
-      const tempCtx = tempCanvas.getContext('2d');
-      const offsetX = (rawVideoW - A4_WIDTH) / 2;
-      const offsetY = (rawVideoH - A4_HEIGHT) / 2;
-      tempCtx.drawImage(dataCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
+      try {
+        // ImageCapture APIで高解像度撮影を試みる
+        const videoTrack = video.srcObject.getVideoTracks()[0];
+        const imageCapture = new ImageCapture(videoTrack);
+        const blob = await imageCapture.takePhoto();
 
-      const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+        // 撮影した画像をcanvasに描画
+        const img = await createImageBitmap(blob);
+        const captureW = img.width;
+        const captureH = img.height;
 
-      // 確認ダイアログを表示
-      document.getElementById('confirmImage').src = imageSrc;
-      document.getElementById('confirmDialog').style.display = 'flex';
+        console.log(`[camera_debug] ImageCapture: ${captureW}×${captureH}`);
 
-      // OKボタン
-      document.getElementById('confirmOkBtn').onclick = () => {
-        document.getElementById('confirmDialog').style.display = 'none';
-        isConfirming = false;
+        // 縦長に統一
+        const capW = Math.min(captureW, captureH);
+        const capH = Math.max(captureW, captureH);
 
-        // ダウンロード（後でsubmissionに渡す部分）
-        tempCanvas.toBlob((blob) => {
-          const now = new Date();
-          const timestamp = now.getFullYear() +
-            String(now.getMonth() + 1).padStart(2, '0') +
-            String(now.getDate()).padStart(2, '0') + '_' +
-            String(now.getHours()).padStart(2, '0') +
-            String(now.getMinutes()).padStart(2, '0') +
-            String(now.getSeconds()).padStart(2, '0');
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = `report_${timestamp}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }, 'image/png');
-      };
+        const captureCanvas = document.createElement('canvas');
+        captureCanvas.width = capW;
+        captureCanvas.height = capH;
+        const captureCtx = captureCanvas.getContext('2d');
 
-      // 撮り直すボタン
-      document.getElementById('confirmRetryBtn').onclick = () => {
-        document.getElementById('confirmDialog').style.display = 'none';
-        isConfirming = false;
-        consecutiveDetectCount = 0;
-      };
+        // 横長で返ってきた場合は回転
+        if (captureW > captureH) {
+          captureCtx.translate(capW / 2, capH / 2);
+          captureCtx.rotate(Math.PI / 2);
+          captureCtx.drawImage(img, -capH / 2, -capW / 2, capH, capW);
+        } else {
+          captureCtx.drawImage(img, 0, 0, capW, capH);
+        }
+
+        // A4領域をトリミング（高解像度画像から）
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = A4_WIDTH;
+        tempCanvas.height = A4_HEIGHT;
+        const tempCtx = tempCanvas.getContext('2d');
+        const offsetX = (capW - A4_WIDTH) / 2;
+        const offsetY = (capH - A4_HEIGHT) / 2;
+        tempCtx.drawImage(captureCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
+
+        const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+
+        // 確認ダイアログを表示
+        document.getElementById('confirmImage').src = imageSrc;
+        document.getElementById('confirmDialog').style.display = 'flex';
+
+        document.getElementById('confirmOkBtn').onclick = () => {
+          document.getElementById('confirmDialog').style.display = 'none';
+          isConfirming = false;
+
+          tempCanvas.toBlob((trimBlob) => {
+            const now = new Date();
+            const timestamp = now.getFullYear() +
+              String(now.getMonth() + 1).padStart(2, '0') +
+              String(now.getDate()).padStart(2, '0') + '_' +
+              String(now.getHours()).padStart(2, '0') +
+              String(now.getMinutes()).padStart(2, '0') +
+              String(now.getSeconds()).padStart(2, '0');
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(trimBlob);
+            link.download = `report_${timestamp}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }, 'image/png');
+        };
+
+        document.getElementById('confirmRetryBtn').onclick = () => {
+          document.getElementById('confirmDialog').style.display = 'none';
+          isConfirming = false;
+          consecutiveDetectCount = 0;
+        };
+
+      } catch (err) {
+        console.warn('[camera_debug] ImageCapture failed, falling back to dataCanvas:', err);
+
+        // フォールバック：dataCanvasから取得
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = A4_WIDTH;
+        tempCanvas.height = A4_HEIGHT;
+        const tempCtx = tempCanvas.getContext('2d');
+        const offsetX = (rawVideoW - A4_WIDTH) / 2;
+        const offsetY = (rawVideoH - A4_HEIGHT) / 2;
+        tempCtx.drawImage(dataCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
+
+        const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+        document.getElementById('confirmImage').src = imageSrc;
+        document.getElementById('confirmDialog').style.display = 'flex';
+
+        document.getElementById('confirmOkBtn').onclick = () => {
+          document.getElementById('confirmDialog').style.display = 'none';
+          isConfirming = false;
+          tempCanvas.toBlob((blob) => {
+            const now = new Date();
+            const timestamp = now.getFullYear() +
+              String(now.getMonth() + 1).padStart(2, '0') +
+              String(now.getDate()).padStart(2, '0') + '_' +
+              String(now.getHours()).padStart(2, '0') +
+              String(now.getMinutes()).padStart(2, '0') +
+              String(now.getSeconds()).padStart(2, '0');
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `report_${timestamp}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }, 'image/png');
+        };
+
+        document.getElementById('confirmRetryBtn').onclick = () => {
+          document.getElementById('confirmDialog').style.display = 'none';
+          isConfirming = false;
+          consecutiveDetectCount = 0;
+        };
+      }
     }
 
     // ========== 撮影ボタン ==========
