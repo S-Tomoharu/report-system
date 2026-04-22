@@ -105,7 +105,9 @@
     <button id="closeBtn">閉じる</button>
   </div>
 
-  <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+
+  <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
     <img id="confirmImage" style="max-width:90%; max-height:60vh; border:2px solid white;">
     <p style="color:white; font-size:18px; font-weight:bold;">この写真でよいですか？</p>
     <div style="display:flex; gap:16px;">
@@ -114,8 +116,12 @@
     </div>
   </div>
 
+  <div id="shootDialog" style="display:none; position:fixed; bottom:120px; left:0; right:0; z-index:200; display:none; justify-content:center;">
+    <button id="shootBtn" style="padding:16px 48px; font-size:18px; font-weight:bold; background:#16a34a; color:white; border:none; border-radius:12px;">📷 撮影する</button>
+  </div>
+
   <script>
-    const VERSION = '20260422-006';
+    const VERSION = '20260422-007';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -644,12 +650,13 @@
         consecutiveDetectCount++;
       } else if (!isConfirming) {
         consecutiveDetectCount = 0;
+        document.getElementById('shootDialog').style.display = 'none';
       }
 
-      // 連続フレーム数を超えたら自動撮影
+      // 連続フレーム数を超えたら撮影ボタンを表示
       if (consecutiveDetectCount >= MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES && !isConfirming) {
         consecutiveDetectCount = 0;
-        triggerAutoCapture();
+        document.getElementById('shootDialog').style.display = 'flex';
       }
 
       // カウント表示
@@ -893,7 +900,89 @@
       }
     }
 
-    // ========== 撮影ボタン ==========
+    // ========== 撮影ボタン（マーカー検出後に表示） ==========
+    document.getElementById('shootBtn').addEventListener('click', () => {
+      document.getElementById('shootDialog').style.display = 'none';
+      document.getElementById('cameraInput').click();
+    });
+
+    // マーカー検出が外れたら撮影ボタンを非表示
+    // （processFrame内で管理）
+
+    // ========== カメラ入力処理 ==========
+    document.getElementById('cameraInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      isConfirming = true;
+
+      const img = await createImageBitmap(file);
+      const captureW = img.width;
+      const captureH = img.height;
+
+      console.log(`[camera_debug] Camera photo: ${captureW}×${captureH}`);
+
+      // 縦長に統一
+      const capW = Math.min(captureW, captureH);
+      const capH = Math.max(captureW, captureH);
+
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = capW;
+      captureCanvas.height = capH;
+      const captureCtx = captureCanvas.getContext('2d');
+
+      if (captureW > captureH) {
+        captureCtx.translate(capW / 2, capH / 2);
+        captureCtx.rotate(Math.PI / 2);
+        captureCtx.drawImage(img, -capH / 2, -capW / 2, capH, capW);
+      } else {
+        captureCtx.drawImage(img, 0, 0, capW, capH);
+      }
+
+      // A4領域をトリミング
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = A4_WIDTH;
+      tempCanvas.height = A4_HEIGHT;
+      const tempCtx = tempCanvas.getContext('2d');
+      const offsetX = (capW - A4_WIDTH) / 2;
+      const offsetY = (capH - A4_HEIGHT) / 2;
+      tempCtx.drawImage(captureCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
+
+      const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
+
+      // 確認ダイアログを表示
+      document.getElementById('confirmImage').src = imageSrc;
+      document.getElementById('confirmDialog').style.display = 'flex';
+
+      document.getElementById('confirmOkBtn').onclick = () => {
+        document.getElementById('confirmDialog').style.display = 'none';
+        isConfirming = false;
+        consecutiveDetectCount = 0;
+
+        tempCanvas.toBlob((blob) => {
+          const now = new Date();
+          const timestamp = now.getFullYear() +
+            String(now.getMonth() + 1).padStart(2, '0') +
+            String(now.getDate()).padStart(2, '0') + '_' +
+            String(now.getHours()).padStart(2, '0') +
+            String(now.getMinutes()).padStart(2, '0') +
+            String(now.getSeconds()).padStart(2, '0');
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `report_${timestamp}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }, 'image/png');
+      };
+
+      document.getElementById('confirmRetryBtn').onclick = () => {
+        document.getElementById('confirmDialog').style.display = 'none';
+        isConfirming = false;
+        consecutiveDetectCount = 0;
+        e.target.value = '';
+      };
+    });
     captureBtn.addEventListener('click', () => {
 
       // RGB 画像を #video から直接取得してダウンロード
