@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-001';
+    const VERSION = '20260423-002';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -795,21 +795,62 @@
         document.getElementById('confirmDialog').style.display = 'none';
         isConfirming = false;
 
-        tempCanvas.toBlob((blob) => {
-          const now = new Date();
-          const timestamp = now.getFullYear() +
-            String(now.getMonth() + 1).padStart(2, '0') +
-            String(now.getDate()).padStart(2, '0') + '_' +
-            String(now.getHours()).padStart(2, '0') +
-            String(now.getMinutes()).padStart(2, '0') +
-            String(now.getSeconds()).padStart(2, '0');
+        const now = new Date();
+        const timestamp = now.getFullYear() +
+          String(now.getMonth() + 1).padStart(2, '0') +
+          String(now.getDate()).padStart(2, '0') + '_' +
+          String(now.getHours()).padStart(2, '0') +
+          String(now.getMinutes()).padStart(2, '0') +
+          String(now.getSeconds()).padStart(2, '0');
+
+        function downloadBlob(blob, filename) {
           const link = document.createElement('a');
           link.href = URL.createObjectURL(blob);
-          link.download = `report_${timestamp}.png`;
+          link.download = filename;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-        }, 'image/png');
+        }
+
+        // グレースケール画像を生成
+        const grayCanvas = document.createElement('canvas');
+        grayCanvas.width = A4_WIDTH;
+        grayCanvas.height = A4_HEIGHT;
+        const grayCtx = grayCanvas.getContext('2d');
+        grayCtx.drawImage(tempCanvas, 0, 0);
+        const grayImgData = grayCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
+        for (let i = 0; i < grayImgData.data.length; i += 4) {
+          const g = Math.round(grayImgData.data[i] * 0.299 + grayImgData.data[i+1] * 0.587 + grayImgData.data[i+2] * 0.114);
+          grayImgData.data[i] = g;
+          grayImgData.data[i+1] = g;
+          grayImgData.data[i+2] = g;
+        }
+        grayCtx.putImageData(grayImgData, 0, 0);
+
+        // 白黒画像を生成（閾値128）
+        const bwCanvas = document.createElement('canvas');
+        bwCanvas.width = A4_WIDTH;
+        bwCanvas.height = A4_HEIGHT;
+        const bwCtx = bwCanvas.getContext('2d');
+        bwCtx.drawImage(tempCanvas, 0, 0);
+        const bwImgData = bwCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
+        for (let i = 0; i < bwImgData.data.length; i += 4) {
+          const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
+          const bw = g > 128 ? 255 : 0;
+          bwImgData.data[i] = bw;
+          bwImgData.data[i+1] = bw;
+          bwImgData.data[i+2] = bw;
+        }
+        bwCtx.putImageData(bwImgData, 0, 0);
+
+        // 時間差でダウンロード
+        tempCanvas.toBlob((blob) => downloadBlob(blob, `report_rgb_${timestamp}.png`), 'image/png');
+        setTimeout(() => {
+          grayCanvas.toBlob((blob) => downloadBlob(blob, `report_gray_${timestamp}.png`), 'image/png');
+        }, 500);
+        setTimeout(() => {
+          bwCanvas.toBlob((blob) => downloadBlob(blob, `report_bw_${timestamp}.png`), 'image/png');
+        }, 1000);
       };
 
       document.getElementById('confirmRetryBtn').onclick = () => {
