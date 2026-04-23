@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-010';
+    const VERSION = '20260423-011';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -851,8 +851,23 @@
       // 4隅のビデオ座標から透視変換（傾き補正）
       let warpedCanvas;
       if (lastCornerVideoPoints && lastCornerVideoPoints.length === 4) {
-        // srcPts: TL・TR・BR・BLのビデオ座標
-        const srcPts = lastCornerVideoPoints;
+        // mmをピクセルに変換
+        const mmToPx = A4_WIDTH / 210;
+        const m5 = Math.round(5 * mmToPx);   // 5mm
+        const m13 = Math.round(13 * mmToPx); // 13mm（5mm + 8mm）
+
+        // srcPts: マーカー左上座標からA4角を計算
+        // TL: 左5mm、上5mm
+        // TR: 右13mm、上5mm
+        // BR: 右13mm、下13mm
+        // BL: 左5mm、下13mm
+        const corners = lastCornerVideoPoints;
+        const srcPts = [
+          { x: corners[0].x - m5,  y: corners[0].y - m5  }, // TL
+          { x: corners[1].x + m13, y: corners[1].y - m5  }, // TR
+          { x: corners[2].x + m13, y: corners[2].y + m13 }, // BR
+          { x: corners[3].x - m5,  y: corners[3].y + m13 }  // BL
+        ];
         // dstPts: A4座標の四隅
         const dstPts = [
           { x: 0,        y: 0         }, // TL
