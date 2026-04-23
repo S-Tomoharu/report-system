@@ -107,7 +107,7 @@
 
   <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
     <img id="confirmImage" style="max-width:90%; max-height:60vh; border:2px solid white;">
-    <p style="color:white; font-size:18px; font-weight:bold;">この写真でよいですか？</p>
+    <p id="confirmMsg" style="color:white; font-size:18px; font-weight:bold;">この写真でよいですか？</p>
     <div style="display:flex; gap:16px;">
       <button id="confirmOkBtn" style="padding:12px 32px; font-size:16px; font-weight:bold; background:#2563eb; color:white; border:none; border-radius:8px;">OK</button>
       <button id="confirmRetryBtn" style="padding:12px 32px; font-size:16px; font-weight:bold; background:rgba(255,255,255,0.2); color:white; border:none; border-radius:8px;">撮り直す</button>
@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-003';
+    const VERSION = '20260423-004';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -912,8 +912,6 @@
         const bwCtx = bwCanvas.getContext('2d');
         bwCtx.drawImage(warpedCanvas, 0, 0);
         const bwImgData = bwCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
-
-        // 大津の二値化で閾値を自動決定
         const hist = new Array(256).fill(0);
         for (let i = 0; i < bwImgData.data.length; i += 4) {
           const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
@@ -934,7 +932,6 @@
           const varBetween = wB * wF * (mB - mF) * (mB - mF);
           if (varBetween > maxVar) { maxVar = varBetween; threshold = t; }
         }
-
         for (let i = 0; i < bwImgData.data.length; i += 4) {
           const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
           const bw = g > threshold ? 255 : 0;
@@ -944,14 +941,30 @@
         }
         bwCtx.putImageData(bwImgData, 0, 0);
 
-        // 時間差でダウンロード
-        warpedCanvas.toBlob((blob) => downloadBlob(blob, `report_rgb_${timestamp}.png`), 'image/png');
-        setTimeout(() => {
-          grayCanvas.toBlob((blob) => downloadBlob(blob, `report_gray_${timestamp}.png`), 'image/png');
-        }, 1000);
-        setTimeout(() => {
-          bwCanvas.toBlob((blob) => downloadBlob(blob, `report_bw_${timestamp}.png`), 'image/png');
-        }, 2000);
+        // 3段階で順番に保存
+        const saves = [
+          { label: 'RGB', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png` },
+          { label: 'グレースケール', canvas: grayCanvas, filename: `report_gray_${timestamp}.png` },
+          { label: '白黒', canvas: bwCanvas, filename: `report_bw_${timestamp}.png` }
+        ];
+
+        function saveNext(index) {
+          if (index >= saves.length) return;
+          const { label, canvas, filename } = saves[index];
+          const confirmMsg = document.getElementById('confirmMsg');
+          const confirmImg = document.getElementById('confirmImage');
+          confirmMsg.textContent = `${label}を保存します`;
+          confirmImg.src = canvas.toDataURL('image/jpeg', 0.9);
+          document.getElementById('confirmDialog').style.display = 'flex';
+
+          document.getElementById('confirmOkBtn').onclick = () => {
+            document.getElementById('confirmDialog').style.display = 'none';
+            canvas.toBlob((blob) => downloadBlob(blob, filename), 'image/png');
+            saveNext(index + 1);
+          };
+        }
+
+        saveNext(0);
       };
 
       document.getElementById('confirmRetryBtn').onclick = () => {
