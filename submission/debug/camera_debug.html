@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-004';
+    const VERSION = '20260423-005';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -890,71 +890,33 @@
           document.body.removeChild(link);
         }
 
-        // グレースケール画像を生成
-        const grayCanvas = document.createElement('canvas');
-        grayCanvas.width = A4_WIDTH;
-        grayCanvas.height = A4_HEIGHT;
-        const grayCtx = grayCanvas.getContext('2d');
-        grayCtx.drawImage(warpedCanvas, 0, 0);
-        const grayImgData = grayCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
-        for (let i = 0; i < grayImgData.data.length; i += 4) {
-          const g = Math.round(grayImgData.data[i] * 0.299 + grayImgData.data[i+1] * 0.587 + grayImgData.data[i+2] * 0.114);
-          grayImgData.data[i] = g;
-          grayImgData.data[i+1] = g;
-          grayImgData.data[i+2] = g;
+        // コントラスト強調画像を生成
+        const contrastCanvas = document.createElement('canvas');
+        contrastCanvas.width = A4_WIDTH;
+        contrastCanvas.height = A4_HEIGHT;
+        const contrastCtx = contrastCanvas.getContext('2d');
+        contrastCtx.drawImage(warpedCanvas, 0, 0);
+        const contrastImgData = contrastCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
+        const factor = 2.0; // コントラスト強調係数
+        for (let i = 0; i < contrastImgData.data.length; i += 4) {
+          for (let c = 0; c < 3; c++) {
+            const val = contrastImgData.data[i + c];
+            contrastImgData.data[i + c] = Math.min(255, Math.max(0, Math.round((val - 128) * factor + 128)));
+          }
         }
-        grayCtx.putImageData(grayImgData, 0, 0);
+        contrastCtx.putImageData(contrastImgData, 0, 0);
 
-        // 白黒画像を生成（大津の二値化）
-        const bwCanvas = document.createElement('canvas');
-        bwCanvas.width = A4_WIDTH;
-        bwCanvas.height = A4_HEIGHT;
-        const bwCtx = bwCanvas.getContext('2d');
-        bwCtx.drawImage(warpedCanvas, 0, 0);
-        const bwImgData = bwCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
-        const hist = new Array(256).fill(0);
-        for (let i = 0; i < bwImgData.data.length; i += 4) {
-          const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
-          hist[g]++;
-        }
-        const total = A4_WIDTH * A4_HEIGHT;
-        let sum = 0;
-        for (let i = 0; i < 256; i++) sum += i * hist[i];
-        let sumB = 0, wB = 0, maxVar = 0, threshold = 128;
-        for (let t = 0; t < 256; t++) {
-          wB += hist[t];
-          if (wB === 0) continue;
-          const wF = total - wB;
-          if (wF === 0) break;
-          sumB += t * hist[t];
-          const mB = sumB / wB;
-          const mF = (sum - sumB) / wF;
-          const varBetween = wB * wF * (mB - mF) * (mB - mF);
-          if (varBetween > maxVar) { maxVar = varBetween; threshold = t; }
-        }
-        for (let i = 0; i < bwImgData.data.length; i += 4) {
-          const g = Math.round(bwImgData.data[i] * 0.299 + bwImgData.data[i+1] * 0.587 + bwImgData.data[i+2] * 0.114);
-          const bw = g > threshold ? 255 : 0;
-          bwImgData.data[i] = bw;
-          bwImgData.data[i+1] = bw;
-          bwImgData.data[i+2] = bw;
-        }
-        bwCtx.putImageData(bwImgData, 0, 0);
-
-        // 3段階で順番に保存
+        // 2つを順番に保存
         const saves = [
-          { label: 'RGB', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png` },
-          { label: 'グレースケール', canvas: grayCanvas, filename: `report_gray_${timestamp}.png` },
-          { label: '白黒', canvas: bwCanvas, filename: `report_bw_${timestamp}.png` }
+          { label: '元画像（RGB）', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png` },
+          { label: 'コントラスト強調', canvas: contrastCanvas, filename: `report_contrast_${timestamp}.png` }
         ];
 
         function saveNext(index) {
           if (index >= saves.length) return;
           const { label, canvas, filename } = saves[index];
-          const confirmMsg = document.getElementById('confirmMsg');
-          const confirmImg = document.getElementById('confirmImage');
-          confirmMsg.textContent = `${label}を保存します`;
-          confirmImg.src = canvas.toDataURL('image/jpeg', 0.9);
+          document.getElementById('confirmMsg').textContent = `${label}を保存します`;
+          document.getElementById('confirmImage').src = canvas.toDataURL('image/jpeg', 0.9);
           document.getElementById('confirmDialog').style.display = 'flex';
 
           document.getElementById('confirmOkBtn').onclick = () => {
