@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-007';
+    const VERSION = '20260423-008';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -319,8 +319,8 @@
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 }
+            width: { ideal: 3840 },
+            height: { ideal: 2160 }
           }
         });
 
