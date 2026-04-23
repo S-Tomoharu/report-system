@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-014';
+    const VERSION = '20260424-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -877,6 +877,21 @@
           { x: 0,        y: A4_HEIGHT }  // BL
         ];
         warpedCanvas = await warpPerspective(dataCanvas, srcPts, dstPts, A4_WIDTH, A4_HEIGHT);
+
+        // ガンマ補正（影を持ち上げる）
+        const gamma = 0.7; // 1より小さいと明るくなる、調整可能
+        const gammaLUT = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) {
+          gammaLUT[i] = Math.round(255 * Math.pow(i / 255, gamma));
+        }
+        const gammaCtx = warpedCanvas.getContext('2d');
+        const gammaImgData = gammaCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
+        for (let i = 0; i < gammaImgData.data.length; i += 4) {
+          gammaImgData.data[i]   = gammaLUT[gammaImgData.data[i]];
+          gammaImgData.data[i+1] = gammaLUT[gammaImgData.data[i+1]];
+          gammaImgData.data[i+2] = gammaLUT[gammaImgData.data[i+2]];
+        }
+        gammaCtx.putImageData(gammaImgData, 0, 0);
       } else {
         // フォールバック：単純トリミング
         warpedCanvas = document.createElement('canvas');
