@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-008';
+    const VERSION = '20260423-009';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -128,8 +128,8 @@
     const errorDiv = document.getElementById('error');
 
     // ========== 仕様書の値（固定） ==========
-    const A4_WIDTH = 1080;
-    const A4_HEIGHT = 1527;
+    let A4_WIDTH = 1080;
+    let A4_HEIGHT = 1527;
 
     const EVALUATION_POINTS = {
       blue: { a4X: 540, a4Y: 763.5, label: '青' },
@@ -336,6 +336,10 @@
           videoW = Math.min(rawVideoW, rawVideoH);
           videoH = Math.max(rawVideoW, rawVideoH);
 
+          // A4サイズをビデオ解像度に合わせて動的に計算
+          A4_WIDTH = videoW;
+          A4_HEIGHT = Math.round(videoW * (1527 / 1080));
+
           console.log(`[camera_debug] loadedmetadata event fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
           processFrame();
         }, { once: true });
@@ -355,6 +359,10 @@
             // 機種依存対応：小さいほうを W、大きいほうを H に統一
             videoW = Math.min(rawVideoW, rawVideoH);
             videoH = Math.max(rawVideoW, rawVideoH);
+
+            // A4サイズをビデオ解像度に合わせて動的に計算
+            A4_WIDTH = videoW;
+            A4_HEIGHT = Math.round(videoW * (1527 / 1080));
 
             console.log(`[camera_debug] Fallback: loadedmetadata not fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
             processFrame();
