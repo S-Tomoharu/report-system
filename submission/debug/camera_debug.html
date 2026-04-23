@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260423-011';
+    const VERSION = '20260423-012';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -476,7 +476,8 @@
         return vidToScreen(vp.x, vp.y);
       }
 
-      // グレースケール用の一時キャンバス（ビデオ座標系）
+      // グレースケール四隅表示（デバッグ用・確認済みのためコメントアウト）
+      /*
       const grayTempCanvas = document.createElement('canvas');
       grayTempCanvas.width = rawVideoW;
       grayTempCanvas.height = rawVideoH;
@@ -491,7 +492,6 @@
       }
       grayTempCtx.putImageData(grayImgData, 0, 0);
 
-      // 四隅のグレースケールをdisplayCanvasに描画（ビデオ座標→画面座標）
       const cornerRangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
       const cornerRectW = A4_WIDTH * cornerRangeRatio;
       const cornerRectH = A4_HEIGHT * cornerRangeRatio;
@@ -516,6 +516,7 @@
         const dh = Math.abs(dp2.y - dp1.y);
         dispCtx.drawImage(grayTempCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
       }
+      */
 
       // ========== A4白枠をビデオ座標系で描画 ==========
       const a4ScreenCorners = [
