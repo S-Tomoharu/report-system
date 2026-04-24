@@ -912,7 +912,6 @@
         document.getElementById('confirmDialog').style.display = 'none';
         isConfirming = false;
 
-        // RGBのみ保存
         // グレースケール画像を生成
         const grayCanvas = document.createElement('canvas');
         grayCanvas.width = A4_WIDTH;
@@ -936,34 +935,49 @@
           String(now.getMinutes()).padStart(2, '0') +
           String(now.getSeconds()).padStart(2, '0');
 
-        function downloadBlob(blob, filename) {
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(blob);
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+        const fileName = `report_${timestamp}.png`;
+        const dataUrl = grayCanvas.toDataURL('image/png');
+
+        // submission.htmlが親ウィンドウとして存在する場合はpostMessageで送信
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage({
+            type: 'cameraCapture',
+            dataUrl,
+            fileName
+          }, '*');
+          // 送信後にウィンドウを閉じる
+          window.close();
+        } else {
+          // 単独で開いている場合はダウンロード（デバッグ用）
+          function downloadBlob(blob, filename) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+
+          const saves = [
+            { label: '元画像（RGB）', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png`, type: 'image/png' },
+            { label: 'グレースケール', canvas: grayCanvas, filename: `report_gray_${timestamp}.png`, type: 'image/png' }
+          ];
+
+          function saveNext(index) {
+            if (index >= saves.length) return;
+            const { label, canvas, filename, type } = saves[index];
+            document.getElementById('confirmMsg').textContent = `${label}を保存します`;
+            document.getElementById('confirmImage').src = canvas.toDataURL('image/jpeg', 0.9);
+            document.getElementById('confirmDialog').style.display = 'flex';
+            document.getElementById('confirmOkBtn').onclick = () => {
+              document.getElementById('confirmDialog').style.display = 'none';
+              canvas.toBlob((blob) => downloadBlob(blob, filename), type);
+              saveNext(index + 1);
+            };
+          }
+
+          saveNext(0);
         }
-
-        const saves = [
-          { label: '元画像（RGB）', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png`, type: 'image/png' },
-          { label: 'グレースケール', canvas: grayCanvas, filename: `report_gray_${timestamp}.png`, type: 'image/png' }
-        ];
-
-        function saveNext(index) {
-          if (index >= saves.length) return;
-          const { label, canvas, filename, type } = saves[index];
-          document.getElementById('confirmMsg').textContent = `${label}を保存します`;
-          document.getElementById('confirmImage').src = canvas.toDataURL('image/jpeg', 0.9);
-          document.getElementById('confirmDialog').style.display = 'flex';
-          document.getElementById('confirmOkBtn').onclick = () => {
-            document.getElementById('confirmDialog').style.display = 'none';
-            canvas.toBlob((blob) => downloadBlob(blob, filename), type);
-            saveNext(index + 1);
-          };
-        }
-
-        saveNext(0);
       };
 
       document.getElementById('confirmRetryBtn').onclick = () => {
