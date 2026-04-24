@@ -114,7 +114,7 @@
     <button id="closeBtn">閉じる</button>
   </div>
 
-  <div id="confirmDialog">
+  <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
     <img id="confirmImage" style="max-width:90%; max-height:60vh; border:2px solid white;">
     <p id="confirmMsg" style="color:white; font-size:18px; font-weight:bold;">この写真でよいですか？</p>
     <div style="display:flex; gap:16px;">
@@ -124,7 +124,7 @@
   </div>
 
   <script>
-    const VERSION = '20260425-002';
+    const VERSION = '20260425-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
