@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260425-004';
+    const VERSION = '20260425-005';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -184,8 +184,6 @@
     let lastCornerVideoPoints = null;
     const totalShots = parseInt(new URLSearchParams(window.location.search).get('totalShots') || '1');
     let currentShot = parseInt(new URLSearchParams(window.location.search).get('currentShot') || '0');
-    let rawVideoW = 0;
-    let rawVideoH = 0;
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
