@@ -973,8 +973,11 @@
               document.getElementById('confirmRetryBtn').style.display = '';
             };
           } else {
-            // 全部撮影完了
-            window.close();
+            // 全部撮影完了・そのまま閉じる（カメラが見えないように）
+            document.getElementById('confirmMsg').textContent = '提出完了！ウィンドウを閉じます';
+            document.getElementById('confirmOkBtn').style.display = 'none';
+            document.getElementById('confirmRetryBtn').style.display = 'none';
+            setTimeout(() => window.close(), 800);
           }
         } else {
           // 単独で開いている場合はダウンロード（デバッグ用）
