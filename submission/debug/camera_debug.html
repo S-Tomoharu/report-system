@@ -22,21 +22,6 @@
       display: block;
     }
 
-    #confirmDialog {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.8);
-      z-index: 200;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-    }
-    #confirmDialog.visible {
-      display: flex;
-    }
-
     #version {
       position: fixed;
       top: 20px;
@@ -124,7 +109,7 @@
   </div>
 
   <script>
-    const VERSION = '20260425-003';
+    const VERSION = '20260425-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -187,10 +172,6 @@
     }
 
     console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
-
-    // ========== 撮影枚数管理 ==========
-    const totalShots = parseInt(urlParams.get('totalShots') || '1');
-    let currentShot = parseInt(urlParams.get('currentShot') || '0');
 
     // ========== ビデオ解像度（初回取得後は固定） ==========
     let videoW = 0;
@@ -680,16 +661,13 @@
         triggerAutoCapture();
       }
 
-      // 進捗表示
-      const pageNum = Math.floor(currentShot / 2) + 1;
-      const side = currentShot % 2 === 0 ? '表' : '裏';
-      const progressText = totalShots > 1 ? `${pageNum}枚目-${side}（${currentShot + 1}/${totalShots}）` : `${pageNum}枚目-${side}`;
+      // カウント表示
       dispCtx.fillStyle = allDetected ? 'lime' : 'white';
       dispCtx.font = 'bold 20px monospace';
       dispCtx.textAlign = 'center';
       dispCtx.textBaseline = 'top';
       dispCtx.fillText(
-        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : progressText,
+        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES}` : '待機中',
         displayCanvas.width / 2, 10
       );
 
@@ -922,10 +900,10 @@
 
       // 確認ダイアログを表示
       document.getElementById('confirmImage').src = imageSrc;
-      document.getElementById('confirmDialog').classList.add('visible');
+      document.getElementById('confirmDialog').style.display = 'flex';
 
       document.getElementById('confirmOkBtn').onclick = () => {
-        document.getElementById('confirmDialog').classList.remove('visible');
+        document.getElementById('confirmDialog').style.display = 'none';
         isConfirming = false;
 
         // グレースケール画像を生成
@@ -951,82 +929,38 @@
           String(now.getMinutes()).padStart(2, '0') +
           String(now.getSeconds()).padStart(2, '0');
 
-        const fileName = `report_${timestamp}.png`;
-        const dataUrl = grayCanvas.toDataURL('image/png');
-
-        // submission.htmlが親ウィンドウとして存在する場合はpostMessageで送信
-        if (window.opener && !window.opener.closed) {
-          window.opener.postMessage({
-            type: 'cameraCapture',
-            dataUrl,
-            fileName,
-            shotIndex: currentShot
-          }, '*');
-
-          // 次の撮影へ進む or 全部終わったら閉じる
-          currentShot++;
-          if (currentShot < totalShots) {
-            // 次の撮影の準備
-            consecutiveDetectCount = 0;
-            isConfirming = false;
-            const nextPageNum = Math.floor(currentShot / 2) + 1;
-            const nextSide = currentShot % 2 === 0 ? '表' : '裏';
-            document.getElementById('confirmMsg').textContent = `次は${nextPageNum}枚目-${nextSide}を撮影してください`;
-            document.getElementById('confirmImage').src = '';
-            document.getElementById('confirmOkBtn').textContent = '次へ';
-            document.getElementById('confirmDialog').classList.add('visible');
-            document.getElementById('confirmRetryBtn').style.display = 'none';
-            document.getElementById('confirmOkBtn').onclick = () => {
-              document.getElementById('confirmDialog').classList.remove('visible');
-              document.getElementById('confirmOkBtn').textContent = 'OK';
-              document.getElementById('confirmRetryBtn').style.display = '';
-            };
-          } else {
-            // 全部撮影完了・ビデオとループを止めてから閉じる
-            cancelAnimationFrame(animId);
-            animId = null;
-            video.srcObject.getTracks().forEach(track => track.stop());
-            video.srcObject = null;
-            document.getElementById('confirmMsg').textContent = '提出完了！ウィンドウを閉じます';
-            document.getElementById('confirmOkBtn').style.display = 'none';
-            document.getElementById('confirmRetryBtn').style.display = 'none';
-            setTimeout(() => window.close(), 800);
-          }
-        } else {
-          // 単独で開いている場合はダウンロード（デバッグ用）
-          function downloadBlob(blob, filename) {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
-
-          const saves = [
-            { label: '元画像（RGB）', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png`, type: 'image/png' },
-            { label: 'グレースケール', canvas: grayCanvas, filename: `report_gray_${timestamp}.png`, type: 'image/png' }
-          ];
-
-          function saveNext(index) {
-            if (index >= saves.length) return;
-            const { label, canvas, filename, type } = saves[index];
-            document.getElementById('confirmMsg').textContent = `${label}を保存します`;
-            document.getElementById('confirmImage').src = canvas.toDataURL('image/jpeg', 0.9);
-            document.getElementById('confirmDialog').classList.add('visible');
-            document.getElementById('confirmOkBtn').onclick = () => {
-              document.getElementById('confirmDialog').classList.remove('visible');
-              canvas.toBlob((blob) => downloadBlob(blob, filename), type);
-              saveNext(index + 1);
-            };
-          }
-
-          saveNext(0);
+        function downloadBlob(blob, filename) {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         }
+
+        const saves = [
+          { label: '元画像（RGB）', canvas: warpedCanvas, filename: `report_rgb_${timestamp}.png`, type: 'image/png' },
+          { label: 'グレースケール', canvas: grayCanvas, filename: `report_gray_${timestamp}.png`, type: 'image/png' }
+        ];
+
+        function saveNext(index) {
+          if (index >= saves.length) return;
+          const { label, canvas, filename, type } = saves[index];
+          document.getElementById('confirmMsg').textContent = `${label}を保存します`;
+          document.getElementById('confirmImage').src = canvas.toDataURL('image/jpeg', 0.9);
+          document.getElementById('confirmDialog').style.display = 'flex';
+          document.getElementById('confirmOkBtn').onclick = () => {
+            document.getElementById('confirmDialog').style.display = 'none';
+            canvas.toBlob((blob) => downloadBlob(blob, filename), type);
+            saveNext(index + 1);
+          };
+        }
+
+        saveNext(0);
       };
 
       document.getElementById('confirmRetryBtn').onclick = () => {
-        document.getElementById('confirmDialog').classList.remove('visible');
+        document.getElementById('confirmDialog').style.display = 'none';
         isConfirming = false;
         consecutiveDetectCount = 0;
       };
