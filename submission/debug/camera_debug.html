@@ -22,10 +22,19 @@
       display: block;
     }
 
-    #displayCanvas {
+    #confirmDialog {
+      display: none;
       position: fixed;
       inset: 0;
-      pointer-events: none;
+      background: rgba(0,0,0,0.8);
+      z-index: 200;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    #confirmDialog.visible {
+      display: flex;
     }
 
     #version {
@@ -105,7 +114,7 @@
     <button id="closeBtn">閉じる</button>
   </div>
 
-  <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
+  <div id="confirmDialog">
     <img id="confirmImage" style="max-width:90%; max-height:60vh; border:2px solid white;">
     <p id="confirmMsg" style="color:white; font-size:18px; font-weight:bold;">この写真でよいですか？</p>
     <div style="display:flex; gap:16px;">
@@ -913,10 +922,10 @@
 
       // 確認ダイアログを表示
       document.getElementById('confirmImage').src = imageSrc;
-      document.getElementById('confirmDialog').style.display = 'flex';
+      document.getElementById('confirmDialog').classList.add('visible');
 
       document.getElementById('confirmOkBtn').onclick = () => {
-        document.getElementById('confirmDialog').style.display = 'none';
+        document.getElementById('confirmDialog').classList.remove('visible');
         isConfirming = false;
 
         // グレースケール画像を生成
@@ -965,15 +974,17 @@
             document.getElementById('confirmMsg').textContent = `次は${nextPageNum}枚目-${nextSide}を撮影してください`;
             document.getElementById('confirmImage').src = '';
             document.getElementById('confirmOkBtn').textContent = '次へ';
-            document.getElementById('confirmDialog').style.display = 'flex';
+            document.getElementById('confirmDialog').classList.add('visible');
             document.getElementById('confirmRetryBtn').style.display = 'none';
             document.getElementById('confirmOkBtn').onclick = () => {
-              document.getElementById('confirmDialog').style.display = 'none';
+              document.getElementById('confirmDialog').classList.remove('visible');
               document.getElementById('confirmOkBtn').textContent = 'OK';
               document.getElementById('confirmRetryBtn').style.display = '';
             };
           } else {
-            // 全部撮影完了・ビデオを止めてから閉じる
+            // 全部撮影完了・ビデオとループを止めてから閉じる
+            cancelAnimationFrame(animId);
+            animId = null;
             video.srcObject.getTracks().forEach(track => track.stop());
             video.srcObject = null;
             document.getElementById('confirmMsg').textContent = '提出完了！ウィンドウを閉じます';
@@ -1002,9 +1013,9 @@
             const { label, canvas, filename, type } = saves[index];
             document.getElementById('confirmMsg').textContent = `${label}を保存します`;
             document.getElementById('confirmImage').src = canvas.toDataURL('image/jpeg', 0.9);
-            document.getElementById('confirmDialog').style.display = 'flex';
+            document.getElementById('confirmDialog').classList.add('visible');
             document.getElementById('confirmOkBtn').onclick = () => {
-              document.getElementById('confirmDialog').style.display = 'none';
+              document.getElementById('confirmDialog').classList.remove('visible');
               canvas.toBlob((blob) => downloadBlob(blob, filename), type);
               saveNext(index + 1);
             };
@@ -1015,7 +1026,7 @@
       };
 
       document.getElementById('confirmRetryBtn').onclick = () => {
-        document.getElementById('confirmDialog').style.display = 'none';
+        document.getElementById('confirmDialog').classList.remove('visible');
         isConfirming = false;
         consecutiveDetectCount = 0;
       };
