@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260424-002';
+    const VERSION = '20260424-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -178,6 +178,10 @@
     }
 
     console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
+
+    // ========== 撮影枚数管理 ==========
+    const totalShots = parseInt(urlParams.get('totalShots') || '1');
+    let currentShot = parseInt(urlParams.get('currentShot') || '0');
 
     // ========== ビデオ解像度（初回取得後は固定） ==========
     let videoW = 0;
@@ -668,12 +672,17 @@
       }
 
       // カウント表示
+      const pageNum = Math.floor(currentShot / 2) + 1;
+      const side = currentShot % 2 === 0 ? '表' : '裏';
+      const progressText = totalShots > 1
+        ? `${pageNum}枚目-${side}（${currentShot + 1}/${totalShots}）`
+        : '';
       dispCtx.fillStyle = allDetected ? 'lime' : 'white';
       dispCtx.font = 'bold 20px monospace';
       dispCtx.textAlign = 'center';
       dispCtx.textBaseline = 'top';
       dispCtx.fillText(
-        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES}` : '待機中',
+        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : `待機中 ${progressText}`,
         displayCanvas.width / 2, 10
       );
 
@@ -943,10 +952,30 @@
           window.opener.postMessage({
             type: 'cameraCapture',
             dataUrl,
-            fileName
+            fileName,
+            shotIndex: currentShot
           }, '*');
-          // 送信後にウィンドウを閉じる
-          window.close();
+
+          // 次の撮影へ進む or 全部終わったら閉じる
+          currentShot++;
+          if (currentShot < totalShots) {
+            // 次の撮影の準備
+            consecutiveDetectCount = 0;
+            isConfirming = false;
+            const nextPageNum = Math.floor(currentShot / 2) + 1;
+            const nextSide = currentShot % 2 === 0 ? '表' : '裏';
+            document.getElementById('confirmMsg').textContent = `次は${nextPageNum}枚目-${nextSide}を撮影してください`;
+            document.getElementById('confirmImage').src = '';
+            document.getElementById('confirmOkBtn').textContent = '次へ';
+            document.getElementById('confirmDialog').style.display = 'flex';
+            document.getElementById('confirmOkBtn').onclick = () => {
+              document.getElementById('confirmDialog').style.display = 'none';
+              document.getElementById('confirmOkBtn').textContent = 'OK';
+            };
+          } else {
+            // 全部撮影完了
+            window.close();
+          }
         } else {
           // 単独で開いている場合はダウンロード（デバッグ用）
           function downloadBlob(blob, filename) {

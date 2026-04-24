@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260424-002';
+    const VERSION = '20260424-001';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbzjdWowASKBLt4GMArG6QQ20IiHb76dz_y16VvalMUgp9snDojlcxXyX0-_50Gcj-_0/exec';
@@ -390,7 +390,8 @@
       const w = 480, h = 780;
       const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
       const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
-      cameraWindow = window.open('debug/camera_debug.html', 'camera',
+      const params = `totalShots=${totalShots}&currentShot=${shotIndex}`;
+      cameraWindow = window.open(`debug/camera_debug.html?${params}`, 'camera',
         `width=${w},height=${h},left=${left},top=${top},resizable=yes`);
       if (!cameraWindow) {
         showStatus('error', 'ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
@@ -400,20 +401,21 @@
     // ── camera.htmlからの画像受け取り ──
     window.addEventListener('message', (event) => {
       if (event.data?.type !== 'cameraCapture') return;
-      const { dataUrl, fileName } = event.data;
+      const { dataUrl, fileName, shotIndex } = event.data;
 
-      // blobに変換
       fetch(dataUrl).then(r => r.blob()).then(blob => {
-        capturedImages[currentShotIndex] = { dataUrl, blob, fileName };
+        const idx = shotIndex !== undefined ? shotIndex : currentShotIndex;
+        capturedImages[idx] = { dataUrl, blob, fileName };
 
         // 次のステップへ
-        if (currentShotIndex < totalShots - 1) {
-          currentShotIndex++;
+        if (idx < totalShots - 1) {
+          currentShotIndex = idx + 1;
+        } else {
+          currentShotIndex = idx;
         }
         updateStepUI();
       });
 
-      // camera.htmlに確認を返す
       if (event.source) {
         event.source.postMessage({ type: 'cameraCaptureAcknowledged' }, '*');
       }
