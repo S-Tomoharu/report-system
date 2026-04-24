@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260425-003';
+    const VERSION = '20260425-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -454,8 +454,8 @@
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
       // 画面表示スケールを計算（1回だけ）
-      // A4座標系基準でスケールを計算（スマホ機種に動的対応）
-      const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT);
+      // A4の固定比率（1080×1527）基準でスケールを計算
+      const baseScale = Math.min(window.innerWidth / 1080, window.innerHeight / 1527);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
       // 表示用キャンバス初期化
