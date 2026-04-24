@@ -105,17 +105,8 @@
     <button id="closeBtn">閉じる</button>
   </div>
 
-  <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
-    <img id="confirmImage" style="max-width:90%; max-height:60vh; border:2px solid white;">
-    <p id="confirmMsg" style="color:white; font-size:18px; font-weight:bold;">この写真でよいですか？</p>
-    <div style="display:flex; gap:16px;">
-      <button id="confirmOkBtn" style="padding:12px 32px; font-size:16px; font-weight:bold; background:#2563eb; color:white; border:none; border-radius:8px;">OK</button>
-      <button id="confirmRetryBtn" style="padding:12px 32px; font-size:16px; font-weight:bold; background:rgba(255,255,255,0.2); color:white; border:none; border-radius:8px;">撮り直す</button>
-    </div>
-  </div>
-
   <script>
-    const VERSION = '20260425-002';
+    const VERSION = '20260425-003';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -128,8 +119,8 @@
     const errorDiv = document.getElementById('error');
 
     // ========== 仕様書の値（固定） ==========
-    let A4_WIDTH = 1080;
-    let A4_HEIGHT = 1527;
+    const A4_WIDTH = 1080;
+    const A4_HEIGHT = 1527;
 
     const EVALUATION_POINTS = {
       blue: { a4X: 540, a4Y: 763.5, label: '青' },
@@ -145,9 +136,7 @@
       VIDEO_SCALE: 1.0,
       VIDEO_OFFSET_Y: 0,
       DETECTION_RANGE_RATIO: 0.2,
-      SCAN_STEP: 10,
-      AUTO_CAPTURE_THRESHOLD: 50,
-      AUTO_CAPTURE_FRAMES: 3
+      SCAN_STEP: 10
     };
 
     // URL パラメータから値を取得して上書き
@@ -176,17 +165,6 @@
     // ========== ビデオ解像度（初回取得後は固定） ==========
     let videoW = 0;
     let videoH = 0;
-    let rawVideoW = 0;
-    let rawVideoH = 0;
-
-    // ========== 自動撮影管理 ==========
-    let consecutiveDetectCount = 0;
-    let isConfirming = false;
-    let lastCornerVideoPoints = null;
-
-    // ========== 撮影枚数管理 ==========
-    const totalShots = parseInt(urlParams.get('totalShots') || '1');
-    let currentShot = parseInt(urlParams.get('currentShot') || '0');
 
     // ========== キャンバス ==========
     const dataCanvas = document.createElement('canvas');
@@ -266,22 +244,40 @@
       };
     }
 
-    // ========== 指定領域のコントラスト最大値検索 ==========
-    function scanCornerRegion(a4MinX, a4MinY, a4MaxX, a4MaxY, dW, dH, gray, integ, W1, params) {
-      const vidMinPt = a4ToVideo(a4MinX, a4MinY, dW, dH);
-      const vidMaxPt = a4ToVideo(a4MaxX, a4MaxY, dW, dH);
-      const vidMinX = Math.round(vidMinPt.x);
-      const vidMinY = Math.round(vidMinPt.y);
-      const vidMaxX = Math.round(vidMaxPt.x);
-      const vidMaxY = Math.round(vidMaxPt.y);
+    // ========== BL領域のコントラスト最大値検索（ビデオ座標系） ==========
+    function scanBLRegion(videoW, videoH, gray, integ, W1, params) {
+      const detectionRangeRatio = params.DETECTION_RANGE_RATIO;
+      const rectW = A4_WIDTH * detectionRangeRatio;
+      const rectH = A4_HEIGHT * detectionRangeRatio;
+
+      // BL領域のA4座標範囲
+      const blA4MinX = 0;
+      const blA4MinY = A4_HEIGHT - rectH;
+      const blA4MaxX = rectW;
+      const blA4MaxY = A4_HEIGHT;
+
+      // A4座標 → ビデオ座標に変換（領域の四隅）
+      const blVidMinPt = a4ToVideo(blA4MinX, blA4MinY, videoW, videoH);
+      const blVidMaxPt = a4ToVideo(blA4MaxX, blA4MaxY, videoW, videoH);
+
+      const blVidMinX = Math.round(blVidMinPt.x);
+      const blVidMinY = Math.round(blVidMinPt.y);
+      const blVidMaxX = Math.round(blVidMaxPt.x);
+      const blVidMaxY = Math.round(blVidMaxPt.y);
+
       const windowSize = Math.max(8, Math.round(A4_WIDTH * params.MARKER_SIZE_RATIO));
+
       let maxContrast = -Infinity;
-      let maxVideoX = vidMinX;
-      let maxVideoY = vidMinY;
-      for (let y = vidMinY; y + windowSize <= vidMaxY; y++) {
-        for (let x = vidMinX; x + windowSize <= vidMaxX; x++) {
-          const contrast = calculateContrast(x, y, windowSize, gray, integ, dW, dH, W1, params);
+      let maxVideoX = blVidMinX;
+      let maxVideoY = blVidMinY;
+
+      // BL領域内を1ピクセル単位で全走査
+      for (let y = blVidMinY; y + windowSize <= blVidMaxY; y++) {
+        for (let x = blVidMinX; x + windowSize <= blVidMaxX; x++) {
+          const contrast = calculateContrast(x, y, windowSize, gray, integ, videoW, videoH, W1, params);
           const contrastValue = parseFloat(contrast.C);
+
+          // 最大値を更新
           if (contrastValue > maxContrast) {
             maxContrast = contrastValue;
             maxVideoX = x;
@@ -289,73 +285,20 @@
           }
         }
       }
-      const offsetX = (dW - A4_WIDTH) / 2;
-      const offsetY = (dH - A4_HEIGHT) / 2;
+
+      // ビデオ座標 → A4座標に変換（表示用）
+      const offsetX = (videoW - A4_WIDTH) / 2;
+      const offsetY = (videoH - A4_HEIGHT) / 2;
+      const maxA4X = maxVideoX - offsetX;
+      const maxA4Y = maxVideoY - offsetY;
+
       return {
         videoX: maxVideoX,
         videoY: maxVideoY,
-        a4X: maxVideoX - offsetX,
-        a4Y: maxVideoY - offsetY,
+        a4X: maxA4X,
+        a4Y: maxA4Y,
         contrast: maxContrast
       };
-    }
-
-    // ========== 透視変換（傾き補正） ==========
-    function solveLinear(A, b) {
-      const n = 8;
-      const M = A.map((r, i) => [...r, b[i]]);
-      for (let c = 0; c < n; c++) {
-        let p = c;
-        for (let r = c+1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
-        [M[c], M[p]] = [M[p], M[c]];
-        for (let r = 0; r < n; r++) {
-          if (r === c || M[r][c] === 0) continue;
-          const f = M[r][c] / M[c][c];
-          for (let j = c; j <= n; j++) M[r][j] -= f * M[c][j];
-        }
-      }
-      return M.map((r, i) => r[n] / r[i]);
-    }
-
-    function computeHomography(src, dst) {
-      const A = [], b = [];
-      for (let i = 0; i < 4; i++) {
-        const {x: x1, y: y1} = src[i], {x: x2, y: y2} = dst[i];
-        A.push([x1, y1, 1, 0, 0, 0, -x2*x1, -x2*y1]); b.push(x2);
-        A.push([0, 0, 0, x1, y1, 1, -y2*x1, -y2*y1]); b.push(y2);
-      }
-      return solveLinear(A, b);
-    }
-
-    async function warpPerspective(srcCvs, srcPts, dstPts, dstW, dstH) {
-      await new Promise(r => setTimeout(r, 0));
-      const H = computeHomography(dstPts, srcPts);
-      const outCvs = document.createElement('canvas');
-      outCvs.width = dstW; outCvs.height = dstH;
-      const sd = srcCvs.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, srcCvs.width, srcCvs.height).data;
-      const outCtx = outCvs.getContext('2d', { willReadFrequently: true });
-      const od = outCtx.createImageData(dstW, dstH);
-      const sw = srcCvs.width, sh = srcCvs.height;
-      for (let y = 0; y < dstH; y++) {
-        for (let x = 0; x < dstW; x++) {
-          const w_ = H[6]*x + H[7]*y + 1;
-          const sx = Math.round((H[0]*x + H[1]*y + H[2]) / w_);
-          const sy = Math.round((H[3]*x + H[4]*y + H[5]) / w_);
-          const oi = (y * dstW + x) * 4;
-          if (sx >= 0 && sx < sw && sy >= 0 && sy < sh) {
-            const si = (sy * sw + sx) * 4;
-            od.data[oi]   = sd[si];
-            od.data[oi+1] = sd[si+1];
-            od.data[oi+2] = sd[si+2];
-            od.data[oi+3] = 255;
-          } else {
-            od.data[oi] = od.data[oi+1] = od.data[oi+2] = 255;
-            od.data[oi+3] = 255;
-          }
-        }
-      }
-      outCtx.putImageData(od, 0, 0);
-      return outCvs;
     }
 
     // ========== カメラ起動 ==========
@@ -369,8 +312,8 @@
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 3840 },
-            height: { ideal: 2160 }
+            width: { ideal: 1080 },
+            height: { ideal: 1920 }
           }
         });
 
@@ -378,13 +321,16 @@
 
         console.log('[camera_debug] Setting up loadedmetadata listener');
         video.addEventListener('loadedmetadata', () => {
-          rawVideoW = video.videoWidth;
-          rawVideoH = video.videoHeight;
-          videoW = Math.min(rawVideoW, rawVideoH);
-          videoH = Math.max(rawVideoW, rawVideoH);
-          A4_WIDTH = videoW;
-          A4_HEIGHT = Math.round(videoW * (1527 / 1080));
-          console.log(`[camera_debug] loadedmetadata: raw=${rawVideoW}×${rawVideoH}, video=${videoW}×${videoH}, A4=${A4_WIDTH}×${A4_HEIGHT}`);
+          // ビデオ解像度を一度だけ取得（初回のみ）
+          videoW = video.videoWidth;
+          videoH = video.videoHeight;
+
+          // 機種依存対応：小さいほうを W、大きいほうを H に統一
+          if (videoW > videoH) {
+            [videoW, videoH] = [videoH, videoW];
+          }
+
+          console.log(`[camera_debug] loadedmetadata event fired! Video: ${videoW}×${videoH}`);
           processFrame();
         }, { once: true });
 
@@ -393,14 +339,18 @@
         await video.play();
         console.log('[camera_debug] video.play() completed');
 
+        // fallback: loadedmetadata が発火しない場合
         setTimeout(() => {
           if (video.videoWidth > 0 && !animId) {
-            rawVideoW = video.videoWidth;
-            rawVideoH = video.videoHeight;
-            videoW = Math.min(rawVideoW, rawVideoH);
-            videoH = Math.max(rawVideoW, rawVideoH);
-            A4_WIDTH = videoW;
-            A4_HEIGHT = Math.round(videoW * (1527 / 1080));
+            // ビデオ解像度を一度だけ取得（初回のみ）
+            videoW = video.videoWidth;
+            videoH = video.videoHeight;
+
+            // 機種依存対応：小さいほうを W、大きいほうを H に統一
+            if (videoW > videoH) {
+              [videoW, videoH] = [videoH, videoW];
+            }
+
             console.log('[camera_debug] Fallback: loadedmetadata not fired, calling processFrame() manually');
             processFrame();
           }
@@ -422,30 +372,28 @@
       if (videoW === 0 || videoH === 0) return;
 
       // データキャンバスをリサイズ
-      if (dataCanvas.width !== rawVideoW || dataCanvas.height !== rawVideoH) {
-        dataCanvas.width = rawVideoW;
-        dataCanvas.height = rawVideoH;
+      if (dataCanvas.width !== videoW || dataCanvas.height !== videoH) {
+        dataCanvas.width = videoW;
+        dataCanvas.height = videoH;
       }
 
-      // ビデオからピクセルデータ取得（生解像度で）
-      dataCtx.drawImage(video, 0, 0, rawVideoW, rawVideoH);
-      const imgData = dataCtx.getImageData(0, 0, rawVideoW, rawVideoH);
+      // ビデオからピクセルデータ取得
+      dataCtx.drawImage(video, 0, 0, videoW, videoH);
+      const imgData = dataCtx.getImageData(0, 0, videoW, videoH);
       const d = imgData.data;
-      const dataW = rawVideoW;
-      const dataH = rawVideoH;
 
       // ========== グレースケール＆積分画像を1回だけ計算 ==========
-      const gray = new Uint8Array(dataW * dataH);
-      for (let i = 0; i < dataW * dataH; i++) {
+      const gray = new Uint8Array(videoW * videoH);
+      for (let i = 0; i < videoW * videoH; i++) {
         const p = i * 4;
         gray[i] = Math.round(d[p] * 0.299 + d[p+1] * 0.587 + d[p+2] * 0.114);
       }
 
-      const W1 = dataW + 1;
-      const integ = new Int32Array((dataH + 1) * W1);
-      for (let y = 1; y <= dataH; y++) {
-        for (let x = 1; x <= dataW; x++) {
-          integ[y * W1 + x] = gray[(y-1) * dataW + (x-1)]
+      const W1 = videoW + 1;
+      const integ = new Int32Array((videoH + 1) * W1);
+      for (let y = 1; y <= videoH; y++) {
+        for (let x = 1; x <= videoW; x++) {
+          integ[y * W1 + x] = gray[(y-1) * videoW + (x-1)]
             + integ[(y-1) * W1 + x] + integ[y * W1 + (x-1)] - integ[(y-1) * W1 + (x-1)];
         }
       }
@@ -454,8 +402,8 @@
       const windowSize = Math.round(A4_WIDTH * MARKER_DETECT_PARAMS.MARKER_SIZE_RATIO);
 
       // 画面表示スケールを計算（1回だけ）
-      // A4の固定比率（1080×1527）基準でスケールを計算
-      const baseScale = Math.min(window.innerWidth / 1080, window.innerHeight / 1527);
+      // A4座標系基準でスケールを計算（スマホ機種に動的対応）
+      const baseScale = Math.min(window.innerWidth / A4_WIDTH, window.innerHeight / A4_HEIGHT);
       const displayScale = baseScale * MARKER_DETECT_PARAMS.VIDEO_SCALE;
 
       // 表示用キャンバス初期化
@@ -610,71 +558,22 @@
       // dispCtx.lineTo(halfW, window.innerHeight);
       // dispCtx.stroke();
 
-      // ========== 4隅のコントラスト最大値 ==========
-      const rangeRatio = MARKER_DETECT_PARAMS.DETECTION_RANGE_RATIO;
-      const rW = A4_WIDTH  * rangeRatio;
-      const rH = A4_HEIGHT * rangeRatio;
+      // ========== BL領域のコントラスト最大値 ==========
+      const blResult = scanBLRegion(videoW, videoH, gray, integ, W1, MARKER_DETECT_PARAMS);
+      const blScreenPt = a4ToScreen(blResult.a4X, blResult.a4Y, displayScale, MARKER_DETECT_PARAMS);
 
-      const cornerDefs = [
-        { label: 'TL', a4MinX: 0,            a4MinY: 0,            a4MaxX: rW,        a4MaxY: rH         },
-        { label: 'TR', a4MinX: A4_WIDTH - rW, a4MinY: 0,            a4MaxX: A4_WIDTH,  a4MaxY: rH         },
-        { label: 'BR', a4MinX: A4_WIDTH - rW, a4MinY: A4_HEIGHT-rH, a4MaxX: A4_WIDTH,  a4MaxY: A4_HEIGHT  },
-        { label: 'BL', a4MinX: 0,            a4MinY: A4_HEIGHT-rH, a4MaxX: rW,        a4MaxY: A4_HEIGHT  }
-      ];
+      // 赤色の点を描画（半径8px）
+      dispCtx.fillStyle = 'red';
+      dispCtx.beginPath();
+      dispCtx.arc(blScreenPt.x, blScreenPt.y, 8, 0, 2 * Math.PI);
+      dispCtx.fill();
 
-      const cornerResults = [];
-      for (const corner of cornerDefs) {
-        const result = scanCornerRegion(
-          corner.a4MinX, corner.a4MinY, corner.a4MaxX, corner.a4MaxY,
-          dataW, dataH, gray, integ, W1, MARKER_DETECT_PARAMS
-        );
-        cornerResults.push(result);
-
-        const screenPt = a4ToScreen(result.a4X, result.a4Y, displayScale, MARKER_DETECT_PARAMS);
-        const detected = result.contrast >= MARKER_DETECT_PARAMS.AUTO_CAPTURE_THRESHOLD;
-        dispCtx.fillStyle = detected ? 'lime' : 'red';
-        dispCtx.beginPath();
-        dispCtx.arc(screenPt.x, screenPt.y, 8, 0, 2 * Math.PI);
-        dispCtx.fill();
-        dispCtx.fillStyle = detected ? 'lime' : 'red';
-        dispCtx.font = 'bold 14px monospace';
-        dispCtx.textAlign = 'left';
-        dispCtx.textBaseline = 'top';
-        dispCtx.fillText(`${corner.label} C=${result.contrast.toFixed(1)}`, screenPt.x + 12, screenPt.y - 10);
-      }
-
-      // 4隅全部が閾値を超えているか
-      const allDetected = cornerResults.every(r => r.contrast >= MARKER_DETECT_PARAMS.AUTO_CAPTURE_THRESHOLD);
-
-      // 4隅座標を保存
-      if (allDetected) {
-        lastCornerVideoPoints = cornerResults.map(r => ({ x: r.videoX, y: r.videoY }));
-      }
-
-      if (allDetected && !isConfirming) {
-        consecutiveDetectCount++;
-      } else if (!isConfirming) {
-        consecutiveDetectCount = 0;
-      }
-
-      // 連続フレーム数を超えたら自動撮影
-      if (consecutiveDetectCount >= MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES && !isConfirming) {
-        consecutiveDetectCount = 0;
-        triggerAutoCapture();
-      }
-
-      // 進捗表示
-      const pageNum = Math.floor(currentShot / 2) + 1;
-      const side = currentShot % 2 === 0 ? '表' : '裏';
-      const progressText = totalShots > 1 ? `${pageNum}枚目-${side}（${currentShot + 1}/${totalShots}）` : `${pageNum}枚目-${side}`;
-      dispCtx.fillStyle = allDetected ? 'lime' : 'white';
-      dispCtx.font = 'bold 20px monospace';
-      dispCtx.textAlign = 'center';
+      // コントラスト値を赤色で表示
+      dispCtx.fillStyle = 'red';
+      dispCtx.font = 'bold 14px monospace';
+      dispCtx.textAlign = 'left';
       dispCtx.textBaseline = 'top';
-      dispCtx.fillText(
-        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : progressText,
-        displayCanvas.width / 2, 10
-      );
+      dispCtx.fillText(`C=${blResult.contrast.toFixed(1)}`, blScreenPt.x + 12, blScreenPt.y - 10);
 
       // ========== 各評価点を処理 ==========
       dispCtx.font = 'bold 13px monospace';
@@ -747,7 +646,6 @@
       const paramText = [
         `window.innerWidth: ${window.innerWidth}`,
         `window.innerHeight: ${window.innerHeight}`,
-        `rawVideoW: ${rawVideoW}, rawVideoH: ${rawVideoH}`,
         `videoW: ${videoW}, videoH: ${videoH}`,
         `baseScale (for a4ToScreen): ${baseScale.toFixed(4)}`,
         `videoScale (object-fit: cover): ${videoScaleCover.toFixed(4)}`,
@@ -885,132 +783,6 @@
         window.close();
       }, 5000);
     });
-
-    // ========== 自動撮影 ==========
-    async function triggerAutoCapture() {
-      isConfirming = true;
-
-      // 傾き補正
-      let warpedCanvas;
-      if (lastCornerVideoPoints && lastCornerVideoPoints.length === 4) {
-        const mmToPx = A4_WIDTH / 210;
-        const m5  = Math.round(5  * mmToPx);
-        const m13 = Math.round(13 * mmToPx);
-        const corners = lastCornerVideoPoints;
-        const srcPts = [
-          { x: corners[0].x - m5,  y: corners[0].y - m5  },
-          { x: corners[1].x + m13, y: corners[1].y - m5  },
-          { x: corners[2].x + m13, y: corners[2].y + m13 },
-          { x: corners[3].x - m5,  y: corners[3].y + m13 }
-        ];
-        const dstPts = [
-          { x: 0,        y: 0         },
-          { x: A4_WIDTH, y: 0         },
-          { x: A4_WIDTH, y: A4_HEIGHT },
-          { x: 0,        y: A4_HEIGHT }
-        ];
-        warpedCanvas = await warpPerspective(dataCanvas, srcPts, dstPts, A4_WIDTH, A4_HEIGHT);
-
-        // ガンマ補正
-        const gamma = 0.7;
-        const gammaLUT = new Uint8Array(256);
-        for (let i = 0; i < 256; i++) gammaLUT[i] = Math.round(255 * Math.pow(i / 255, gamma));
-        const gammaCtx = warpedCanvas.getContext('2d');
-        const gammaImgData = gammaCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
-        for (let i = 0; i < gammaImgData.data.length; i += 4) {
-          gammaImgData.data[i]   = gammaLUT[gammaImgData.data[i]];
-          gammaImgData.data[i+1] = gammaLUT[gammaImgData.data[i+1]];
-          gammaImgData.data[i+2] = gammaLUT[gammaImgData.data[i+2]];
-        }
-        gammaCtx.putImageData(gammaImgData, 0, 0);
-      } else {
-        warpedCanvas = document.createElement('canvas');
-        warpedCanvas.width = A4_WIDTH;
-        warpedCanvas.height = A4_HEIGHT;
-        const offsetX = (rawVideoW - A4_WIDTH) / 2;
-        const offsetY = (rawVideoH - A4_HEIGHT) / 2;
-        warpedCanvas.getContext('2d').drawImage(dataCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
-      }
-
-      // グレースケール変換
-      const grayCanvas = document.createElement('canvas');
-      grayCanvas.width = A4_WIDTH;
-      grayCanvas.height = A4_HEIGHT;
-      const grayCtx = grayCanvas.getContext('2d');
-      grayCtx.drawImage(warpedCanvas, 0, 0);
-      const grayImgData = grayCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
-      for (let i = 0; i < grayImgData.data.length; i += 4) {
-        const g = Math.round(grayImgData.data[i] * 0.299 + grayImgData.data[i+1] * 0.587 + grayImgData.data[i+2] * 0.114);
-        grayImgData.data[i] = g; grayImgData.data[i+1] = g; grayImgData.data[i+2] = g;
-      }
-      grayCtx.putImageData(grayImgData, 0, 0);
-
-      // 確認ダイアログ表示
-      document.getElementById('confirmImage').src = grayCanvas.toDataURL('image/jpeg', 0.9);
-      document.getElementById('confirmMsg').textContent = 'この写真でよいですか？';
-      document.getElementById('confirmOkBtn').textContent = 'OK';
-      document.getElementById('confirmOkBtn').style.display = '';
-      document.getElementById('confirmRetryBtn').style.display = '';
-      document.getElementById('confirmDialog').style.display = 'flex';
-
-      document.getElementById('confirmOkBtn').onclick = () => {
-        document.getElementById('confirmDialog').style.display = 'none';
-
-        const now = new Date();
-        const timestamp = now.getFullYear() +
-          String(now.getMonth() + 1).padStart(2, '0') +
-          String(now.getDate()).padStart(2, '0') + '_' +
-          String(now.getHours()).padStart(2, '0') +
-          String(now.getMinutes()).padStart(2, '0') +
-          String(now.getSeconds()).padStart(2, '0');
-        const fileName = `report_${timestamp}.png`;
-        const dataUrl = grayCanvas.toDataURL('image/png');
-
-        if (window.opener && !window.opener.closed) {
-          // submission.htmlへ送信
-          window.opener.postMessage({ type: 'cameraCapture', dataUrl, fileName, shotIndex: currentShot }, '*');
-          currentShot++;
-          if (currentShot < totalShots) {
-            const nextPageNum = Math.floor(currentShot / 2) + 1;
-            const nextSide = currentShot % 2 === 0 ? '表' : '裏';
-            document.getElementById('confirmMsg').textContent = `次は${nextPageNum}枚目-${nextSide}を撮影してください`;
-            document.getElementById('confirmImage').src = '';
-            document.getElementById('confirmOkBtn').textContent = '次へ';
-            document.getElementById('confirmRetryBtn').style.display = 'none';
-            document.getElementById('confirmDialog').style.display = 'flex';
-            document.getElementById('confirmOkBtn').onclick = () => {
-              document.getElementById('confirmDialog').style.display = 'none';
-              isConfirming = false;
-              consecutiveDetectCount = 0;
-            };
-          } else {
-            // 全部完了
-            document.getElementById('confirmMsg').textContent = '提出完了！ウィンドウを閉じます';
-            document.getElementById('confirmOkBtn').style.display = 'none';
-            document.getElementById('confirmRetryBtn').style.display = 'none';
-            document.getElementById('confirmDialog').style.display = 'flex';
-            setTimeout(() => window.close(), 800);
-          }
-        } else {
-          // 単独起動時はダウンロード
-          isConfirming = false;
-          grayCanvas.toBlob((blob) => {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }, 'image/png');
-        }
-      };
-
-      document.getElementById('confirmRetryBtn').onclick = () => {
-        document.getElementById('confirmDialog').style.display = 'none';
-        isConfirming = false;
-        consecutiveDetectCount = 0;
-      };
-    }
 
     // ========== 閉じる ==========
     closeBtn.addEventListener('click', () => {
