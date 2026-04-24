@@ -115,7 +115,7 @@
   </div>
 
   <script>
-    const VERSION = '20260424-002';
+    const VERSION = '20260424-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -671,18 +671,16 @@
         triggerAutoCapture();
       }
 
-      // カウント表示
+      // 進捗表示
       const pageNum = Math.floor(currentShot / 2) + 1;
       const side = currentShot % 2 === 0 ? '表' : '裏';
-      const progressText = totalShots > 1
-        ? `${pageNum}枚目-${side}（${currentShot + 1}/${totalShots}）`
-        : '';
+      const progressText = totalShots > 1 ? `${pageNum}枚目-${side}（${currentShot + 1}/${totalShots}）` : `${pageNum}枚目-${side}`;
       dispCtx.fillStyle = allDetected ? 'lime' : 'white';
       dispCtx.font = 'bold 20px monospace';
       dispCtx.textAlign = 'center';
       dispCtx.textBaseline = 'top';
       dispCtx.fillText(
-        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : `待機中 ${progressText}`,
+        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : progressText,
         displayCanvas.width / 2, 10
       );
 
@@ -968,9 +966,11 @@
             document.getElementById('confirmImage').src = '';
             document.getElementById('confirmOkBtn').textContent = '次へ';
             document.getElementById('confirmDialog').style.display = 'flex';
+            document.getElementById('confirmRetryBtn').style.display = 'none';
             document.getElementById('confirmOkBtn').onclick = () => {
               document.getElementById('confirmDialog').style.display = 'none';
               document.getElementById('confirmOkBtn').textContent = 'OK';
+              document.getElementById('confirmRetryBtn').style.display = '';
             };
           } else {
             // 全部撮影完了
