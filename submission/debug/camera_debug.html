@@ -61,15 +61,6 @@
       transition: opacity 0.2s;
     }
 
-    #captureBtn {
-      background: #2563eb;
-      color: white;
-    }
-
-    #captureBtn:active {
-      opacity: 0.8;
-    }
-
     #closeBtn {
       background: rgba(255, 255, 255, 0.2);
       color: white;
@@ -101,8 +92,7 @@
   <div id="error"></div>
 
   <div id="controls">
-    <button id="captureBtn">撮影する</button>
-    <button id="closeBtn">閉じる</button>
+    <button id="closeBtn">戻る</button>
   </div>
 
   <div id="confirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:200; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
@@ -115,7 +105,7 @@
   </div>
 
   <script>
-    const VERSION = '20260424-002';
+    const VERSION = '20260428-001';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -123,7 +113,6 @@
     // ========== DOM要素 ==========
     const video = document.getElementById('video');
     const displayCanvas = document.getElementById('displayCanvas');
-    const captureBtn = document.getElementById('captureBtn');
     const closeBtn = document.getElementById('closeBtn');
     const errorDiv = document.getElementById('error');
 
@@ -682,7 +671,7 @@
       dispCtx.textAlign = 'center';
       dispCtx.textBaseline = 'top';
       dispCtx.fillText(
-        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : `待機中 ${progressText}`,
+        allDetected ? `検出中 ${consecutiveDetectCount}/${MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES} ${progressText}` : progressText,
         displayCanvas.width / 2, 10
       );
 
@@ -1015,77 +1004,6 @@
         consecutiveDetectCount = 0;
       };
     }
-
-    // ========== 撮影ボタン ==========
-    captureBtn.addEventListener('click', () => {
-
-      // RGB 画像を #video から直接取得してダウンロード
-      const rgbCanvas = document.createElement('canvas');
-      rgbCanvas.width = rawVideoW;
-      rgbCanvas.height = rawVideoH;
-      const rgbCtx = rgbCanvas.getContext('2d');
-      rgbCtx.drawImage(video, 0, 0, rawVideoW, rawVideoH);
-
-      const now = new Date();
-      const timestamp = now.getFullYear() +
-        String(now.getMonth() + 1).padStart(2, '0') +
-        String(now.getDate()).padStart(2, '0') + '_' +
-        String(now.getHours()).padStart(2, '0') +
-        String(now.getMinutes()).padStart(2, '0') +
-        String(now.getSeconds()).padStart(2, '0');
-
-      rgbCanvas.toBlob((rgbBlob) => {
-        if (rgbBlob.size === 0) {
-          console.error('[camera_debug] RGB blob is empty!');
-          return;
-        }
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(rgbBlob);
-        link.download = `video_rgb_${timestamp}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        console.log('[camera_debug] RGB download triggered');
-      }, 'image/png');
-
-      // A4領域をトリミング（dataCanvasから切り出し）
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = A4_WIDTH;
-      tempCanvas.height = A4_HEIGHT;
-      const tempCtx = tempCanvas.getContext('2d');
-
-      const offsetX = (rawVideoW - A4_WIDTH) / 2;
-      const offsetY = (rawVideoH - A4_HEIGHT) / 2;
-
-      tempCtx.drawImage(
-        dataCanvas,
-        offsetX, offsetY, A4_WIDTH, A4_HEIGHT,
-        0, 0, A4_WIDTH, A4_HEIGHT
-      );
-
-      const imageSrc = tempCanvas.toDataURL('image/jpeg', 0.9);
-
-      // トリミング画像をダウンロードして確認
-      tempCanvas.toBlob((trimBlob) => {
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(trimBlob);
-        link.download = `video_trim_${timestamp}.png`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        console.log('[camera_debug] Trim download triggered');
-      }, 'image/png');
-
-      // opener に通知
-      if (window.opener && window.opener.displayCapturedImage) {
-        window.opener.displayCapturedImage(imageSrc);
-      }
-
-      // 自動クローズ（ダウンロード完了を待つ）
-      setTimeout(() => {
-        window.close();
-      }, 5000);
-    });
 
     // ========== 閉じる ==========
     closeBtn.addEventListener('click', () => {
