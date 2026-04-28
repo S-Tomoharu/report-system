@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260429-004';
+    const VERSION = '20260429-005';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -513,9 +513,21 @@
             showStatus('loading', 'PDFを作成中...');
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+
             for (let i = 0; i < capturedImages.length; i++) {
               if (i > 0) doc.addPage();
-              doc.addImage(capturedImages[i].dataUrl, 'PNG', 0, 0, 210, 297);
+              // PNG→JPEGに変換してサイズを削減
+              const img = new Image();
+              img.src = capturedImages[i].dataUrl;
+              const cvs = document.createElement('canvas');
+              cvs.width = img.width || 2160;
+              cvs.height = img.height || 3054;
+              const ctx = cvs.getContext('2d');
+              ctx.fillStyle = 'white';
+              ctx.fillRect(0, 0, cvs.width, cvs.height);
+              ctx.drawImage(img, 0, 0);
+              const jpegUrl = cvs.toDataURL('image/jpeg', 0.85);
+              doc.addImage(jpegUrl, 'JPEG', 0, 0, 210, 297);
             }
             const pdfBlob = doc.output('blob');
             const pdfLink = document.createElement('a');
