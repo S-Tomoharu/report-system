@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260428-012';
+    const VERSION = '20260428-013';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -512,6 +512,21 @@
           doc.addImage(capturedImages[i].dataUrl, 'JPEG', 0, 0, 210, 297);
         }
         const pdfBlob = doc.output('blob');
+
+        // サイズ確認用ログ
+        console.log(`PDFサイズ: ${(pdfBlob.size / 1024 / 1024).toFixed(2)}MB`);
+
+        // まずダウンロードして確認
+        const dlLink = document.createElement('a');
+        dlLink.href = URL.createObjectURL(pdfBlob);
+        dlLink.download = `report_preview.pdf`;
+        document.body.appendChild(dlLink);
+        dlLink.click();
+        document.body.removeChild(dlLink);
+
+        showStatus('loading', 'PDFを確認してください。問題なければ次回提出時にDriveへ送信します。');
+        btn.disabled = false;
+        return; // ←一旦ここで止める（Drive送信はまだしない）
 
         showStatus('loading', 'アップロード中...');
 
