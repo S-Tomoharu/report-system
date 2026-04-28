@@ -105,7 +105,7 @@
   </div>
 
   <script>
-    const VERSION = '20260428-009';
+    const VERSION = '20260428-010';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -690,6 +690,9 @@
         dispCtx.textAlign = 'center';
         dispCtx.textBaseline = 'middle';
         dispCtx.fillText(msg, cx, cy);
+        // リセット
+        dispCtx.textAlign = 'left';
+        dispCtx.textBaseline = 'top';
       }
 
       // ========== 各評価点を処理（デバッグ情報保存のみ、表示はしない） ==========
