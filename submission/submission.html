@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260428-005';
+    const VERSION = '20260428-006';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbzjdWowASKBLt4GMArG6QQ20IiHb76dz_y16VvalMUgp9snDojlcxXyX0-_50Gcj-_0/exec';
@@ -357,9 +357,10 @@
         if (capturedImages[i]) {
           // 撮影済み
           step.className = 'shoot-step done';
+          document.getElementById(`desc-${i}`).style.display = 'none';
           thumb.outerHTML = `<img class="thumb-img" id="thumb-${i}" src="${capturedImages[i].dataUrl}">`;
           btn.textContent = '撮り直す';
-          btn.onclick = () => openCamera(i);
+          btn.onclick = () => openCameraRetake(i);
           btn.disabled = !studentClass || !number;
         } else if (i === currentShotIndex) {
           // 現在のステップ
@@ -378,6 +379,24 @@
       const allCaptured = capturedImages.every(img => img !== null);
       const studentOk = !!studentClass && !!number;
       document.getElementById('submitBtn').disabled = !(allCaptured && studentOk);
+    }
+
+    // ── 撮り直し（1枚だけ撮影してsubmissionに戻る）──
+    function openCameraRetake(shotIndex) {
+      if (cameraWindow && !cameraWindow.closed) {
+        cameraWindow.focus();
+        return;
+      }
+      currentShotIndex = shotIndex;
+      const w = 480, h = 780;
+      const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+      const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+      const params = `totalShots=1&currentShot=${shotIndex}`;
+      cameraWindow = window.open(`debug/camera_debug.html?${params}`, 'camera',
+        `width=${w},height=${h},left=${left},top=${top},resizable=yes`);
+      if (!cameraWindow) {
+        showStatus('error', 'ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+      }
     }
 
     // ── カメラを開く ──
