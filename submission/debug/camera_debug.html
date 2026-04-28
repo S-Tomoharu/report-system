@@ -62,8 +62,8 @@
     }
 
     #closeBtn {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
+      background: rgba(255, 255, 255, 0.85);
+      color: #333;
     }
 
     #closeBtn:active {
@@ -105,7 +105,7 @@
   </div>
 
   <script>
-    const VERSION = '20260428-001';
+    const VERSION = '20260428-002';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -948,18 +948,19 @@
           // 次の撮影へ進む or 全部終わったら閉じる
           currentShot++;
           if (currentShot < totalShots) {
-            // 次の撮影の準備
-            consecutiveDetectCount = 0;
-            isConfirming = false;
             const nextPageNum = Math.floor(currentShot / 2) + 1;
             const nextSide = currentShot % 2 === 0 ? '表' : '裏';
             document.getElementById('confirmMsg').textContent = `次は${nextPageNum}枚目-${nextSide}を撮影してください`;
             document.getElementById('confirmImage').src = '';
             document.getElementById('confirmOkBtn').textContent = '次へ';
+            document.getElementById('confirmRetryBtn').style.display = 'none';
             document.getElementById('confirmDialog').style.display = 'flex';
             document.getElementById('confirmOkBtn').onclick = () => {
               document.getElementById('confirmDialog').style.display = 'none';
               document.getElementById('confirmOkBtn').textContent = 'OK';
+              document.getElementById('confirmRetryBtn').style.display = '';
+              isConfirming = false;
+              consecutiveDetectCount = 0;
             };
           } else {
             // 全部撮影完了
