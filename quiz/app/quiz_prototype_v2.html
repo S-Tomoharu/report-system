@@ -156,6 +156,9 @@
     line-height: 1.6;
   }
   .choice:hover:not(.disabled) { border-color: var(--accent); background: var(--accent-light); }
+  @media (hover: none) {
+    .choice:hover:not(.disabled) { border-color: var(--border); background: var(--surface); }
+  }
   .choice.selected { border-color: var(--accent); background: var(--accent-light); }
   .choice.disabled { cursor: default; pointer-events: none; }
   .choice-radio {
