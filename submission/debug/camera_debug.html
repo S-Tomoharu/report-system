@@ -105,7 +105,7 @@
   </div>
 
   <script>
-    const VERSION = '20260428-015';
+    const VERSION = '20260428-016';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -876,10 +876,23 @@
         warpedCanvas.getContext('2d').drawImage(dataCanvas, offsetX, offsetY, A4_WIDTH, A4_HEIGHT, 0, 0, A4_WIDTH, A4_HEIGHT);
       }
 
-      const imageSrc = warpedCanvas.toDataURL('image/jpeg', 0.9);
+      // グレースケール画像を先に生成
+      const grayCanvas = document.createElement('canvas');
+      grayCanvas.width = A4_WIDTH;
+      grayCanvas.height = A4_HEIGHT;
+      const grayCtx = grayCanvas.getContext('2d');
+      grayCtx.drawImage(warpedCanvas, 0, 0);
+      const grayImgData = grayCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
+      for (let i = 0; i < grayImgData.data.length; i += 4) {
+        const g = Math.round(grayImgData.data[i] * 0.299 + grayImgData.data[i+1] * 0.587 + grayImgData.data[i+2] * 0.114);
+        grayImgData.data[i] = g;
+        grayImgData.data[i+1] = g;
+        grayImgData.data[i+2] = g;
+      }
+      grayCtx.putImageData(grayImgData, 0, 0);
 
-      // 確認ダイアログを表示（ボタンを初期状態にリセット）
-      document.getElementById('confirmImage').src = imageSrc;
+      // 確認ダイアログを表示（グレースケール画像で確認）
+      document.getElementById('confirmImage').src = grayCanvas.toDataURL('image/jpeg', 0.9);
       document.getElementById('confirmMsg').textContent = 'この写真でよいですか？';
       document.getElementById('confirmOkBtn').textContent = 'OK';
       document.getElementById('confirmOkBtn').style.display = '';
@@ -889,21 +902,6 @@
       document.getElementById('confirmOkBtn').onclick = () => {
         document.getElementById('confirmDialog').style.display = 'none';
         isConfirming = false;
-
-        // グレースケール画像を生成
-        const grayCanvas = document.createElement('canvas');
-        grayCanvas.width = A4_WIDTH;
-        grayCanvas.height = A4_HEIGHT;
-        const grayCtx = grayCanvas.getContext('2d');
-        grayCtx.drawImage(warpedCanvas, 0, 0);
-        const grayImgData = grayCtx.getImageData(0, 0, A4_WIDTH, A4_HEIGHT);
-        for (let i = 0; i < grayImgData.data.length; i += 4) {
-          const g = Math.round(grayImgData.data[i] * 0.299 + grayImgData.data[i+1] * 0.587 + grayImgData.data[i+2] * 0.114);
-          grayImgData.data[i] = g;
-          grayImgData.data[i+1] = g;
-          grayImgData.data[i+2] = g;
-        }
-        grayCtx.putImageData(grayImgData, 0, 0);
 
         const now = new Date();
         const timestamp = now.getFullYear() +
