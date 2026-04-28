@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260429-002';
+    const VERSION = '20260429-003';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -316,7 +316,8 @@
     // ── 撮影データ管理 ──
     // 1ページ=表裏2枚なのでtotalShots = expectedPages * 2
     const totalShots = expectedPages * 2;
-    const capturedImages = new Array(totalShots).fill(null); // {dataUrl, blob}
+    let downloadIndex = 0;
+    const capturedImages = new Array(totalShots).fill(null);
     let currentShotIndex = 0;
     let cameraWindow = null;
 
@@ -506,8 +507,6 @@
 
       try {
         // 各画像を1枚ずつ確認してダウンロード
-        let downloadIndex = 0;
-
         function downloadNext() {
           if (downloadIndex >= capturedImages.length) {
             showStatus('loading', '全画像の確認が完了しました。');
