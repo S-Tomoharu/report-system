@@ -105,7 +105,7 @@
   </div>
 
   <script>
-    const VERSION = '20260428-010';
+    const VERSION = '20260428-011';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -943,7 +943,9 @@
               consecutiveDetectCount = 0;
             };
           } else {
-            // 全部撮影完了
+            // 全部撮影完了・カメラとループを止めてから閉じる
+            if (animId) cancelAnimationFrame(animId);
+            if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
             window.close();
           }
         } else {
