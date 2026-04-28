@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260429-001';
+    const VERSION = '20260429-002';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -505,22 +505,33 @@
       showStatus('loading', 'PDFを作成中...');
 
       try {
-        // 各画像をPNGとしてダウンロード
-        for (let i = 0; i < capturedImages.length; i++) {
+        // 各画像を1枚ずつ確認してダウンロード
+        let downloadIndex = 0;
+
+        function downloadNext() {
+          if (downloadIndex >= capturedImages.length) {
+            showStatus('loading', '全画像の確認が完了しました。');
+            btn.disabled = false;
+            return;
+          }
+          const i = downloadIndex;
           const pageNum = Math.floor(i / 2) + 1;
           const side = i % 2 === 0 ? '表' : '裏';
-          console.log(`画像${i}: ${capturedImages[i].dataUrl.slice(0, 30)}... サイズ: ${Math.round(capturedImages[i].dataUrl.length / 1024)}KB`);
+          const fileName = `report_${pageNum}枚目_${side}.png`;
+
           const link = document.createElement('a');
           link.href = capturedImages[i].dataUrl;
-          link.download = `report_${pageNum}枚目_${side}.png`;
+          link.download = fileName;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          await new Promise(r => setTimeout(r, 5000));
+
+          showStatus('loading', `${pageNum}枚目-${side}を保存しました。次へ進むには再度「提出する」を押してください。`);
+          downloadIndex++;
+          btn.disabled = false;
         }
 
-        showStatus('loading', 'PNGを確認してください。');
-        btn.disabled = false;
+        downloadNext();
         return;
 
         showStatus('loading', 'アップロード中...');
