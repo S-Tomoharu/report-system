@@ -105,7 +105,7 @@
   </div>
 
   <script>
-    const VERSION = '20260428-008';
+    const VERSION = '20260428-009';
     document.getElementById('version').textContent = `v${VERSION}`;
 
     console.log('[camera_debug] Script started, version:', VERSION);
@@ -675,18 +675,27 @@
         displayCanvas.width / 2, 10
       );
 
-      // ========== 各評価点を処理 ==========
-      dispCtx.font = 'bold 13px monospace';
-      dispCtx.textAlign = 'left';
-      dispCtx.textBaseline = 'top';
+      // マーカーガイダンス（未検出時のみ中央に表示）
+      if (!allDetected) {
+        const cx = displayCanvas.width / 2;
+        const cy = displayCanvas.height / 2;
+        const msg = '黄色枠内にマーカーを入れてください';
+        dispCtx.font = 'bold 16px sans-serif';
+        const metrics = dispCtx.measureText(msg);
+        const pw = metrics.width + 24;
+        const ph = 36;
+        dispCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        dispCtx.fillRect(cx - pw / 2, cy - ph / 2, pw, ph);
+        dispCtx.fillStyle = 'white';
+        dispCtx.textAlign = 'center';
+        dispCtx.textBaseline = 'middle';
+        dispCtx.fillText(msg, cx, cy);
+      }
+
+      // ========== 各評価点を処理（デバッグ情報保存のみ、表示はしない） ==========
       for (const [key, point] of Object.entries(EVALUATION_POINTS)) {
-        // A4座標 → データ座標（評価計算用）
         const videoPt = a4ToVideo(point.a4X, point.a4Y, dataW, dataH);
-
-        // コントラスト計算
         const contrast = calculateContrast(videoPt.x, videoPt.y, windowSize, gray, integ, dataW, dataH, W1, MARKER_DETECT_PARAMS);
-
-        // デバッグ：緑の点の情報を保存（画面表示用）
         if (key === 'green') {
           debugInfo = {
             a4X: point.a4X, a4Y: point.a4Y,
@@ -696,42 +705,6 @@
             cA: contrast.cA, sA: contrast.sA, C: contrast.C,
             centerS_raw: contrast.centerS_raw, outerS_raw: contrast.outerS_raw
           };
-        }
-
-        // ビデオ座標 → 画面座標（表示用）
-        const screenPt = vidToScreen(videoPt.x, videoPt.y);
-        const screenX = screenPt.x;
-        const screenY = screenPt.y;
-
-        // 画面での描画サイズ
-        const screenWindowSize = windowSize * videoScale;
-
-        // 色決定
-        let color;
-        if (key === 'blue') color = 'rgba(0, 150, 255, 0.7)';
-        else if (key === 'green') color = 'rgba(0, 255, 100, 0.7)';
-        else color = 'rgba(200, 100, 255, 0.7)';
-
-        // 枠描画
-        dispCtx.strokeStyle = color;
-        dispCtx.lineWidth = 2;
-        dispCtx.strokeRect(screenX, screenY, screenWindowSize, screenWindowSize);
-
-        // テキスト描画
-        dispCtx.fillStyle = color;
-        const lines = [
-          point.label,
-          `CS=${contrast.CS}`,
-          `OS=${contrast.OS} | sP=${contrast.sP}`,
-          `cA=${contrast.cA}`,
-          `sA=${contrast.sA}`,
-          `C=${contrast.C}`
-        ];
-
-        let textY = screenY - 50;
-        for (const line of lines) {
-          dispCtx.fillText(line, screenX, textY);
-          textY += 16;
         }
       }
 
