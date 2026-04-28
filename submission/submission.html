@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260429-003';
+    const VERSION = '20260429-004';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -509,7 +509,22 @@
         // 各画像を1枚ずつ確認してダウンロード
         function downloadNext() {
           if (downloadIndex >= capturedImages.length) {
-            showStatus('loading', '全画像の確認が完了しました。');
+            // 全PNG完了後にPDF作成
+            showStatus('loading', 'PDFを作成中...');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+            for (let i = 0; i < capturedImages.length; i++) {
+              if (i > 0) doc.addPage();
+              doc.addImage(capturedImages[i].dataUrl, 'PNG', 0, 0, 210, 297);
+            }
+            const pdfBlob = doc.output('blob');
+            const pdfLink = document.createElement('a');
+            pdfLink.href = URL.createObjectURL(pdfBlob);
+            pdfLink.download = `report_${studentClass}-${String(number).padStart(2,'0')}.pdf`;
+            document.body.appendChild(pdfLink);
+            pdfLink.click();
+            document.body.removeChild(pdfLink);
+            showStatus('loading', 'PDF保存完了。確認してください。');
             btn.disabled = false;
             return;
           }
