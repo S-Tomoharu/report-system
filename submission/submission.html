@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260430-002';
+    const VERSION = '20260430-003';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -542,7 +542,7 @@
         const pdfBlob = doc.output('blob');
         const pdfLink = document.createElement('a');
         pdfLink.href = URL.createObjectURL(pdfBlob);
-        pdfLink.download = `report_${studentClass}-${String(number).padStart(2,'0')}.pdf`;
+        pdfLink.download = `第${round}回物理レポート_${studentClass}_${String(number).padStart(2,'0')}.pdf`;
         document.body.appendChild(pdfLink);
         pdfLink.click();
         document.body.removeChild(pdfLink);
