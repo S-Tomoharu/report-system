@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260429-006';
+    const VERSION = '20260429-007';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -526,6 +526,17 @@
                   ctx.fillStyle = 'white';
                   ctx.fillRect(0, 0, cvs.width, cvs.height);
                   ctx.drawImage(img, 0, 0);
+
+                  // 右上にクラス・番号を書き込む
+                  const label = `${studentClass} ${String(number).padStart(2,'0')}番`;
+                  const fontSize = Math.round(cvs.width * 0.022);
+                  ctx.font = `bold ${fontSize}px sans-serif`;
+                  ctx.fillStyle = 'black';
+                  ctx.textAlign = 'right';
+                  ctx.textBaseline = 'top';
+                  const margin = Math.round(cvs.width * 0.02);
+                  ctx.fillText(label, cvs.width - margin, margin);
+
                   resolve(cvs.toDataURL('image/jpeg', 0.85));
                 };
                 img.src = capturedImages[i].dataUrl;
