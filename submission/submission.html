@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260430-001';
+    const VERSION = '20260430-002';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -506,72 +506,48 @@
       showStatus('loading', 'PDFを作成中...');
 
       try {
-        // 各画像を1枚ずつ確認してダウンロード
-        async function downloadNext() {
-          if (downloadIndex >= capturedImages.length) {
-            // 全PNG完了後にPDF作成
-            showStatus('loading', 'PDFを作成中...');
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
-            for (let i = 0; i < capturedImages.length; i++) {
-              if (i > 0) doc.addPage();
-              const jpegUrl = await new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                  const cvs = document.createElement('canvas');
-                  cvs.width = img.width;
-                  cvs.height = img.height;
-                  const ctx = cvs.getContext('2d');
-                  ctx.fillStyle = 'white';
-                  ctx.fillRect(0, 0, cvs.width, cvs.height);
-                  ctx.drawImage(img, 0, 0);
+        for (let i = 0; i < capturedImages.length; i++) {
+          if (i > 0) doc.addPage();
+          const jpegUrl = await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const cvs = document.createElement('canvas');
+              cvs.width = img.width;
+              cvs.height = img.height;
+              const ctx = cvs.getContext('2d');
+              ctx.fillStyle = 'white';
+              ctx.fillRect(0, 0, cvs.width, cvs.height);
+              ctx.drawImage(img, 0, 0);
 
-                  // 右上にクラス・番号を書き込む
-                  const label = `${studentClass} ${String(number).padStart(2,'0')}番`;
-                  const fontSize = Math.round(cvs.width * 0.022);
-                  ctx.font = `bold ${fontSize}px sans-serif`;
-                  ctx.fillStyle = 'black';
-                  ctx.textAlign = 'right';
-                  ctx.textBaseline = 'top';
-                  const margin = Math.round(cvs.width * 0.12);
-                  ctx.fillText(label, cvs.width - margin, Math.round(cvs.height * 0.01));
+              // 右上にクラス・番号を書き込む
+              const label = `${studentClass} ${String(number).padStart(2,'0')}番`;
+              const fontSize = Math.round(cvs.width * 0.022);
+              ctx.font = `bold ${fontSize}px sans-serif`;
+              ctx.fillStyle = 'black';
+              ctx.textAlign = 'right';
+              ctx.textBaseline = 'top';
+              const margin = Math.round(cvs.width * 0.12);
+              ctx.fillText(label, cvs.width - margin, Math.round(cvs.height * 0.01));
 
-                  resolve(cvs.toDataURL('image/jpeg', 0.85));
-                };
-                img.src = capturedImages[i].dataUrl;
-              });
-              doc.addImage(jpegUrl, 'JPEG', 0, 0, 210, 297);
-            }
-            const pdfBlob = doc.output('blob');
-            const pdfLink = document.createElement('a');
-            pdfLink.href = URL.createObjectURL(pdfBlob);
-            pdfLink.download = `report_${studentClass}-${String(number).padStart(2,'0')}.pdf`;
-            document.body.appendChild(pdfLink);
-            pdfLink.click();
-            document.body.removeChild(pdfLink);
-            showStatus('loading', 'PDF保存完了。確認してください。');
-            btn.disabled = false;
-            return;
-          }
-          const i = downloadIndex;
-          const pageNum = Math.floor(i / 2) + 1;
-          const side = i % 2 === 0 ? '表' : '裏';
-          const fileName = `report_${pageNum}枚目_${side}.png`;
-
-          const link = document.createElement('a');
-          link.href = capturedImages[i].dataUrl;
-          link.download = fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-
-          showStatus('loading', `${pageNum}枚目-${side}を保存しました。次へ進むには再度「提出する」を押してください。`);
-          downloadIndex++;
-          btn.disabled = false;
+              resolve(cvs.toDataURL('image/jpeg', 0.85));
+            };
+            img.src = capturedImages[i].dataUrl;
+          });
+          doc.addImage(jpegUrl, 'JPEG', 0, 0, 210, 297);
         }
 
-        downloadNext();
+        const pdfBlob = doc.output('blob');
+        const pdfLink = document.createElement('a');
+        pdfLink.href = URL.createObjectURL(pdfBlob);
+        pdfLink.download = `report_${studentClass}-${String(number).padStart(2,'0')}.pdf`;
+        document.body.appendChild(pdfLink);
+        pdfLink.click();
+        document.body.removeChild(pdfLink);
+        showStatus('loading', 'PDF保存完了。確認してください。');
+        btn.disabled = false;
         return;
 
         showStatus('loading', 'アップロード中...');
