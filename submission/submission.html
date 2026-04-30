@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260430-004';
+    const VERSION = '20260501-001';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -320,6 +320,47 @@
     const capturedImages = new Array(totalShots).fill(null);
     let currentShotIndex = 0;
     let cameraWindow = null;
+
+    // ── バックグラウンドPDF生成管理 ──
+    let pdfPromise = null;
+    let pdfDirty = false;
+
+    async function generatePDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      for (let i = 0; i < capturedImages.length; i++) {
+        if (i > 0) doc.addPage();
+        const jpegUrl = await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const cvs = document.createElement('canvas');
+            cvs.width = img.width;
+            cvs.height = img.height;
+            const ctx = cvs.getContext('2d');
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.drawImage(img, 0, 0);
+            const label = `${studentClass} ${String(number).padStart(2,'0')}番`;
+            const fontSize = Math.round(cvs.width * 0.022);
+            ctx.font = `bold ${fontSize}px sans-serif`;
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            const margin = Math.round(cvs.width * 0.12);
+            ctx.fillText(label, cvs.width - margin, Math.round(cvs.height * 0.01));
+            resolve(cvs.toDataURL('image/jpeg', 0.85));
+          };
+          img.src = capturedImages[i].dataUrl;
+        });
+        doc.addImage(jpegUrl, 'JPEG', 0, 0, 210, 297);
+      }
+      return doc.output('blob');
+    }
+
+    function startBackgroundPDF() {
+      pdfDirty = false;
+      pdfPromise = generatePDF();
+    }
 
     // ── 撮影ステップを生成 ──
     function buildSteps() {
@@ -384,6 +425,8 @@
 
     // ── 撮り直し（1枚だけ撮影してsubmissionに戻る）──
     function openCameraRetake(shotIndex) {
+      pdfDirty = true;
+      pdfPromise = null;
       if (cameraWindow && !cameraWindow.closed) {
         cameraWindow.focus();
         return;
@@ -434,6 +477,12 @@
           currentShotIndex = idx;
         }
         updateStepUI();
+
+        // 全枚数撮影完了したらバックグラウンドでPDF生成開始
+        const allCaptured = capturedImages.every(img => img !== null);
+        if (allCaptured) {
+          startBackgroundPDF();
+        }
       });
 
       if (event.source) {
@@ -503,43 +552,16 @@
     document.getElementById('submitBtn').addEventListener('click', async () => {
       const btn = document.getElementById('submitBtn');
       btn.disabled = true;
-      showStatus('loading', 'PDFを作成中...');
 
       try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-
-        for (let i = 0; i < capturedImages.length; i++) {
-          if (i > 0) doc.addPage();
-          const jpegUrl = await new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              const cvs = document.createElement('canvas');
-              cvs.width = img.width;
-              cvs.height = img.height;
-              const ctx = cvs.getContext('2d');
-              ctx.fillStyle = 'white';
-              ctx.fillRect(0, 0, cvs.width, cvs.height);
-              ctx.drawImage(img, 0, 0);
-
-              // 右上にクラス・番号を書き込む
-              const label = `${studentClass} ${String(number).padStart(2,'0')}番`;
-              const fontSize = Math.round(cvs.width * 0.022);
-              ctx.font = `bold ${fontSize}px sans-serif`;
-              ctx.fillStyle = 'black';
-              ctx.textAlign = 'right';
-              ctx.textBaseline = 'top';
-              const margin = Math.round(cvs.width * 0.12);
-              ctx.fillText(label, cvs.width - margin, Math.round(cvs.height * 0.01));
-
-              resolve(cvs.toDataURL('image/jpeg', 0.85));
-            };
-            img.src = capturedImages[i].dataUrl;
-          });
-          doc.addImage(jpegUrl, 'JPEG', 0, 0, 210, 297);
+        let pdfBlob;
+        if (!pdfDirty && pdfPromise) {
+          showStatus('loading', 'PDFを準備中...');
+          pdfBlob = await pdfPromise;
+        } else {
+          showStatus('loading', 'PDFを作成中...');
+          pdfBlob = await generatePDF();
         }
-
-        const pdfBlob = doc.output('blob');
 
         showStatus('loading', 'アップロード中...');
 
