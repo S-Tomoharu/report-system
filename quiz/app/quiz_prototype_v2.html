@@ -734,7 +734,7 @@ document.getElementById('btnGoSubmit').addEventListener('click', async () => {
   btn.textContent = '準備中...';
 
   try {
-    const res = await fetch(`${GAS_URL}?action=authenticate&class=${encodeURIComponent(studentClass)}&num=${encodeURIComponent(studentNumber)}`);
+    const res = await fetch(`${GAS_URL}?action=authenticate&class=${encodeURIComponent(studentClass)}&num=${encodeURIComponent(studentNumber)}&round=${encodeURIComponent(ROUND)}`);
     const data = await res.json();
 
     if (!data.ok || !data.token) {
