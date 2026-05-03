@@ -728,12 +728,34 @@ document.getElementById('btnDone').addEventListener('click', () => {
 
 document.getElementById('btnRetry').addEventListener('click', startRound);
 
-document.getElementById('btnGoSubmit').addEventListener('click', () => {
-  const url = new URL(SUBMISSION_URL, location.href);
-  url.searchParams.set('class', studentClass);
-  url.searchParams.set('num',   studentNumber);
-  url.searchParams.set('round', ROUND);
-  location.href = url.toString();
+document.getElementById('btnGoSubmit').addEventListener('click', async () => {
+  const btn = document.getElementById('btnGoSubmit');
+  btn.disabled = true;
+  btn.textContent = '準備中...';
+
+  try {
+    const res = await fetch(`${GAS_URL}?action=authenticate&class=${encodeURIComponent(studentClass)}&num=${encodeURIComponent(studentNumber)}`);
+    const data = await res.json();
+
+    if (!data.ok || !data.token) {
+      alert('提出画面への移動に失敗しました。もう一度クイズをやり直してください。');
+      btn.disabled = false;
+      btn.textContent = 'レポートを提出する →';
+      return;
+    }
+
+    const url = new URL(SUBMISSION_URL, location.href);
+    url.searchParams.set('class', studentClass);
+    url.searchParams.set('num',   studentNumber);
+    url.searchParams.set('round', ROUND);
+    url.searchParams.set('token', data.token);
+    location.href = url.toString();
+
+  } catch (err) {
+    alert('提出画面への移動に失敗しました。もう一度クイズをやり直してください。');
+    btn.disabled = false;
+    btn.textContent = 'レポートを提出する →';
+  }
 });
 
 // ── 起動 ──────────────────────────────────────────────
