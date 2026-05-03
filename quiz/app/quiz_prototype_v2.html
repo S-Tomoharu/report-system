@@ -436,8 +436,10 @@ async function checkPeriodAndStart(cls) {
     document.getElementById('passMsg').textContent = `第${ROUND}回レポートの提出を認めます。提出画面へどうぞ。`;
 
     // 提出済みチェック
+    console.log('checkSubmitted:', cls, studentNumber, ROUND);
     const submittedRes = await fetch(`${GAS_URL}?action=checkSubmitted&class=${encodeURIComponent(cls)}&num=${encodeURIComponent(studentNumber)}&round=${encodeURIComponent(ROUND)}`);
     const submittedData = await submittedRes.json();
+    console.log('submittedData:', submittedData);
     if (submittedData.submitted) {
       document.getElementById('loadingBlock').style.display = 'none';
       document.getElementById('closedMsg').style.whiteSpace = 'pre-line';
