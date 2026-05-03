@@ -266,6 +266,14 @@
     <button class="btn-retry-link" id="btnBackToPortal">← クラス・番号を選び直す</button>
   </div>
 
+  <!-- 提出済み -->
+  <div class="result-card" id="submittedScreen">
+    <div class="result-icon">⚠️</div>
+    <div class="result-title">提出済みです</div>
+    <div class="result-msg" id="submittedMsg"></div>
+    <button class="btn-retry-link" id="btnBackToPortal2">← クラス・番号を選び直す</button>
+  </div>
+
   <!-- クラス番号入力 -->
   <div id="loginBlock" style="display:none;">
     <div class="login-card">
@@ -442,9 +450,9 @@ async function checkPeriodAndStart(cls) {
     console.log('submittedData:', submittedData);
     if (submittedData.submitted) {
       document.getElementById('loadingBlock').style.display = 'none';
-      document.getElementById('closedMsg').style.whiteSpace = 'pre-line';
-      document.getElementById('closedMsg').textContent = `${cls} ${String(studentNumber).padStart(2,'0')}番のレポートは既に提出されています。\n身に覚えがない場合は授業担当者に申し出てください。`;
-      document.getElementById('closedScreen').classList.add('visible');
+      document.getElementById('submittedMsg').style.whiteSpace = 'pre-line';
+      document.getElementById('submittedMsg').textContent = `${cls} ${String(studentNumber).padStart(2,'0')}番のレポートは既に提出されています。\n身に覚えがない場合は授業担当者に申し出てください。`;
+      document.getElementById('submittedScreen').classList.add('visible');
       return;
     }
 
@@ -575,6 +583,11 @@ document.getElementById('btnLogin').addEventListener('click', () => {
 // ── 提出期間外画面から戻る ────────────────────────────
 document.getElementById('btnBackToPortal').addEventListener('click', () => {
   document.getElementById('closedScreen').classList.remove('visible');
+  document.getElementById('loginBlock').style.display = '';
+});
+
+document.getElementById('btnBackToPortal2').addEventListener('click', () => {
+  document.getElementById('submittedScreen').classList.remove('visible');
   document.getElementById('loginBlock').style.display = '';
 });
 
