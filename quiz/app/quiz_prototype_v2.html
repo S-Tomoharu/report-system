@@ -423,7 +423,7 @@ async function checkPeriodAndStart(cls) {
 
     if (!data.active) {
       // 期間外
-      let msg = `${cls}のレポート提出期間は現在受け付けていません。`;
+      let msg = `${cls}のレポート提出は現在受け付けていません。`;
       if (data.next) {
         msg += `\n\n第${data.next.round}回の受け付け予定：\n${fmtDate(data.next.start)} 〜 ${fmtDate(data.next.end)}`;
         if (data.next.memo) msg += `\n（${data.next.memo}）`;
