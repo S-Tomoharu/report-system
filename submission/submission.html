@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260502-003';
+    const VERSION = '20260503-001';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -307,7 +307,21 @@
     let studentClass = params.get('class') || '';
     let number = params.get('num') || '';
     const round = params.get('round') || '?';
+    const token = params.get('token') || '';
     let expectedPages = parseInt(params.get('pages') || '1'); // 1ページ=表裏2枚
+
+    // ── トークン検証 ──
+    (async () => {
+      if (!token) {
+        document.body.innerHTML = '<div style="padding:2rem;text-align:center;"><p>不正なアクセスです。クイズからやり直してください。</p></div>';
+        return;
+      }
+      const res = await fetch(`${QUIZ_API_URL}?action=validateToken&token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      if (!data.ok) {
+        document.body.innerHTML = '<div style="padding:2rem;text-align:center;"><p>セッションが切れました。クイズからやり直してください。</p></div>';
+      }
+    })();
 
     // タイトル設定
     document.getElementById('roundLabel').textContent = round !== '?' ? `（第${round}回）` : '';
