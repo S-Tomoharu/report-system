@@ -435,6 +435,17 @@ async function checkPeriodAndStart(cls) {
     document.querySelector('.intro-title').textContent = `提出前の確認テスト（第${ROUND}回）`;
     document.getElementById('passMsg').textContent = `第${ROUND}回レポートの提出を認めます。提出画面へどうぞ。`;
 
+    // 提出済みチェック
+    const submittedRes = await fetch(`${GAS_URL}?action=checkSubmitted&class=${encodeURIComponent(cls)}&num=${encodeURIComponent(studentNumber)}&round=${encodeURIComponent(ROUND)}`);
+    const submittedData = await submittedRes.json();
+    if (submittedData.submitted) {
+      document.getElementById('loadingBlock').style.display = 'none';
+      document.getElementById('closedMsg').style.whiteSpace = 'pre-line';
+      document.getElementById('closedMsg').textContent = `${cls} ${String(studentNumber).padStart(2,'0')}番のレポートは既に提出されています。\n身に覚えがない場合は授業担当者に申し出てください。`;
+      document.getElementById('closedScreen').classList.add('visible');
+      return;
+    }
+
     // 問題を処理（並列実行で取得済みの questionsData を使用）
     if (!questionsData.questions || questionsData.questions.length === 0) throw new Error('問題が見つかりませんでした');
 
