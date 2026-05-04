@@ -355,6 +355,7 @@ const YEAR  = '2026';           // 年度（クラス設定取得に使用）
 const TERM  = CONFIG?.TERM || null;
 const QUIZ_COUNT = CONFIG?.QUIZ_COUNT || 3;
 let   ROUND = null;             // getActivePeriod() で動的にセット
+const TEST_KEY = new URLSearchParams(location.search).get('testKey') || '';
 // SUBMISSION_URL: GitHub Pages 対応 + ローカル開発対応
 const SUBMISSION_URL = CONFIG?.GITHUB_PAGES_URL
   ? (CONFIG.GITHUB_PAGES_URL + '/submission/submission.html')
@@ -411,7 +412,7 @@ async function checkPeriodAndStart(cls) {
   try {
     // 並列実行：getActivePeriod と getQuestions を同時に呼び出し（3s ではなく max(2s, 3s) = 3s）
     const [periodRes, questionsRes] = await Promise.all([
-      fetch(`${GAS_URL}?action=getActivePeriod&class=${encodeURIComponent(cls)}`),
+      fetch(`${GAS_URL}?action=getActivePeriod&class=${encodeURIComponent(cls)}&testKey=${encodeURIComponent(TEST_KEY)}`),
       fetch(`${GAS_URL}?action=getQuestions&sheet=${encodeURIComponent(SHEET)}${TERM ? `&term=${encodeURIComponent(TERM)}` : ''}&mode=quiz`)
     ]);
 
