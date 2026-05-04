@@ -410,17 +410,11 @@ async function checkPeriodAndStart(cls) {
   document.getElementById('loadingBlock').style.display = '';
 
   try {
-    // 並列実行：getActivePeriod と getQuestions を同時に呼び出し（3s ではなく max(2s, 3s) = 3s）
-    const [periodRes, questionsRes] = await Promise.all([
-      fetch(`${GAS_URL}?action=getActivePeriod&class=${encodeURIComponent(cls)}&testkey=${encodeURIComponent(TEST_KEY)}`),
-      fetch(`${GAS_URL}?action=getQuestions&sheet=${encodeURIComponent(SHEET)}${TERM ? `&term=${encodeURIComponent(TERM)}` : ''}&mode=quiz`)
-    ]);
-
+    // まずgetActivePeriodでROUNDを確定
+    const periodRes = await fetch(`${GAS_URL}?action=getActivePeriod&class=${encodeURIComponent(cls)}&testkey=${encodeURIComponent(TEST_KEY)}`);
     const data = await periodRes.json();
-    const questionsData = await questionsRes.json();
 
     if (data.error) throw new Error(data.error);
-    if (questionsData.error) throw new Error(questionsData.error);
 
     if (!data.active) {
       // 期間外
@@ -457,7 +451,10 @@ async function checkPeriodAndStart(cls) {
       return;
     }
 
-    // 問題を処理（並列実行で取得済みの questionsData を使用）
+    // ROUND確定後にgetQuestionsを呼ぶ
+    const questionsRes = await fetch(`${GAS_URL}?action=getQuestions&sheet=${encodeURIComponent(SHEET)}&round=${encodeURIComponent(ROUND)}&mode=quiz`);
+    const questionsData = await questionsRes.json();
+    if (questionsData.error) throw new Error(questionsData.error);
     if (!questionsData.questions || questionsData.questions.length === 0) throw new Error('問題が見つかりませんでした');
 
     QUESTION_POOL = questionsData.questions.map(q => {
