@@ -105,10 +105,10 @@
   </div>
 
   <script>
-    const VERSION = '20260504-003';
-    document.getElementById('version').textContent = `v${VERSION}`;
+    const VERSION = '20260505-001';
+    // document.getElementById('version').textContent = `v${VERSION}`; // 本番では非表示
 
-    console.log('[camera_debug] Script started, version:', VERSION);
+    // console.log('[camera_debug] Script started, version:', VERSION);
 
     // ========== DOM要素 ==========
     const video = document.getElementById('video');
@@ -166,7 +166,7 @@
       MARKER_DETECT_PARAMS.AUTO_CAPTURE_FRAMES = parseInt(urlParams.get('AUTO_CAPTURE_FRAMES'));
     }
 
-    console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
+    // console.log('[camera_debug] MARKER_DETECT_PARAMS initialized from URL:', MARKER_DETECT_PARAMS);
 
     // ========== 撮影枚数管理 ==========
     const totalShots = parseInt(urlParams.get('totalShots') || '1');
@@ -194,7 +194,7 @@
 
     // ========== エラー表示 ==========
     function showError(msg) {
-      console.error('[camera_debug] Error:', msg);
+      // console.error('[camera_debug] Error:', msg);
       errorDiv.textContent = msg;
       errorDiv.style.display = 'block';
     }
@@ -304,7 +304,7 @@
     // ========== カメラ起動 ==========
     async function startCamera() {
       try {
-        console.log('[camera_debug] Requesting camera access...');
+        // console.log('[camera_debug] Requesting camera access...');
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('getUserMedia not supported');
         }
@@ -317,9 +317,9 @@
           }
         });
 
-        console.log('[camera_debug] Stream obtained');
+        // console.log('[camera_debug] Stream obtained');
 
-        console.log('[camera_debug] Setting up loadedmetadata listener');
+        // console.log('[camera_debug] Setting up loadedmetadata listener');
         video.addEventListener('loadedmetadata', () => {
           // ビデオ解像度を一度だけ取得（初回のみ）
           rawVideoW = video.videoWidth;
@@ -333,14 +333,14 @@
           A4_WIDTH = videoW;
           A4_HEIGHT = Math.round(videoW * (1527 / 1080));
 
-          console.log(`[camera_debug] loadedmetadata event fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
+          // console.log(`[camera_debug] loadedmetadata event fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
           processFrame();
         }, { once: true });
 
         video.srcObject = stream;
-        console.log('[camera_debug] video.srcObject set, calling play()');
+        // console.log('[camera_debug] video.srcObject set, calling play()');
         await video.play();
-        console.log('[camera_debug] video.play() completed');
+        // console.log('[camera_debug] video.play() completed');
 
         // fallback: loadedmetadata が発火しない場合
         setTimeout(() => {
@@ -357,7 +357,7 @@
             A4_WIDTH = videoW;
             A4_HEIGHT = Math.round(videoW * (1527 / 1080));
 
-            console.log(`[camera_debug] Fallback: loadedmetadata not fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
+            // console.log(`[camera_debug] Fallback: loadedmetadata not fired! Raw: ${rawVideoW}×${rawVideoH}, Video: ${videoW}×${videoH}`);
             processFrame();
           }
         }, 1000);
@@ -429,7 +429,7 @@
         dispCtx.fillStyle = 'red';
         dispCtx.font = 'bold 24px monospace';
         dispCtx.fillText(`ERROR: displayScale is NaN`, 10, 50);
-        console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
+        // console.error('[camera_debug] displayScale is NaN!', { baseScale, VIDEO_SCALE: MARKER_DETECT_PARAMS.VIDEO_SCALE, window_innerWidth: window.innerWidth, window_innerHeight: window.innerHeight, videoW, videoH });
       }
 
       // ========== dataCanvasに枠・グレースケールを描画してdisplayCanvasに転写 ==========
@@ -741,6 +741,7 @@
         paramY += 20;
       }
 
+      /* デバッグ表示（本番では非表示）
       // ========== デバッグ情報（緑の点）を表示 ==========
       const debugText = [
         `[DEBUG GREEN]`,
@@ -756,6 +757,7 @@
         dispCtx.fillText(line, 10, debugY);
         debugY += 20;
       }
+      */
 
       // 最新フレームを保存（撮影時に使用）
       window.lastCaptureData = { gray, videoW, videoH, dataCanvas };
