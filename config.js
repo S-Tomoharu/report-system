@@ -6,5 +6,5 @@ const CONFIG = {
   SHEET: '2026年度',
   YEAR: '2026',
 
-  YEAR_CONFIG: {"2026":[{"class":"2E","max":37},{"class":"2J","max":47}]}
+  YEAR_CONFIG: {"2026":[{"class":"2E","max":35},{"class":"2J","max":47}]}
 };
