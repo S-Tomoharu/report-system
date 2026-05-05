@@ -105,8 +105,8 @@
   </div>
 
   <script>
-    const VERSION = '20260505-001';
-    // document.getElementById('version').textContent = `v${VERSION}`; // 本番では非表示
+    const VERSION = '20260505-002';
+    document.getElementById('version').textContent = `v${VERSION}`;
 
     // console.log('[camera_debug] Script started, version:', VERSION);
 
@@ -711,6 +711,7 @@
         }
       }
 
+      /* デバッグ表示（本番では非表示）
       // ========== MARKER_DETECT_PARAMS を画面上に表示 ==========
       dispCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
       dispCtx.font = 'bold 14px monospace';
@@ -740,6 +741,7 @@
         dispCtx.fillText(line, 10, paramY);
         paramY += 20;
       }
+      */
 
       /* デバッグ表示（本番では非表示）
       // ========== デバッグ情報（緑の点）を表示 ==========
