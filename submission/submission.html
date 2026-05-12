@@ -295,7 +295,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260512-001';
+    const VERSION = '20260512-002';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
@@ -577,7 +577,10 @@
           pdfBlob = await generatePDF();
         }
 
-        showStatus('loading', 'アップロード中...');
+        const fileSizeMB = (base64.length * 0.75 / 1024 / 1024).toFixed(1);
+        showStatus('loading', `レポートファイル(${fileSizeMB}MB)をアップロード中...`);
+        const msgTimer1 = setTimeout(() => showStatus('loading', 'もうすぐ完了します...'), 5000);
+        const msgTimer2 = setTimeout(() => showStatus('loading', '確認作業中です...'), 10000);
 
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -599,6 +602,8 @@
           token
         };
 
+        clearTimeout(msgTimer1);
+        clearTimeout(msgTimer2);
         const res = await fetch(SUBMISSION_API_URL, { method: 'POST', body: JSON.stringify(payload) });
         const json = await res.json();
         if (!json.ok) throw new Error(json.error || '保存に失敗しました');
