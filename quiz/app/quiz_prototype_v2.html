@@ -355,6 +355,7 @@ const YEAR  = '2026';           // 年度（クラス設定取得に使用）
 const TERM  = CONFIG?.TERM || null;
 const QUIZ_COUNT = CONFIG?.QUIZ_COUNT || 3;
 let   ROUND = null;             // getActivePeriod() で動的にセット
+let   PAGE_COUNT = 1;           // getActivePeriod() で動的にセット
 const TEST_KEY = new URLSearchParams(location.search).get('testkey') || '';
 // SUBMISSION_URL: GitHub Pages 対応 + ローカル開発対応
 const SUBMISSION_URL = CONFIG?.GITHUB_PAGES_URL
@@ -434,6 +435,7 @@ async function checkPeriodAndStart(cls) {
 
     // 有効期間内
     ROUND = String(data.active.round);
+    PAGE_COUNT = Number(data.active.pageCount) || 1;
     document.title = `提出前の確認テスト（第${ROUND}回）`;
     document.querySelector('.intro-title').textContent = `提出前の確認テスト（第${ROUND}回）`;
     document.getElementById('passMsg').textContent = `第${ROUND}回レポートの提出を認めます。提出画面へどうぞ。`;
@@ -773,6 +775,7 @@ document.getElementById('btnGoSubmit').addEventListener('click', async () => {
     url.searchParams.set('num',   studentNumber);
     url.searchParams.set('round', ROUND);
     url.searchParams.set('token', data.token);
+    url.searchParams.set('pages', PAGE_COUNT);
     location.href = url.toString();
 
   } catch (err) {
