@@ -295,15 +295,12 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
-    const VERSION = '20260508-004';
+    const VERSION = '20260512-001';
     document.getElementById('versionBadge').textContent = `v${VERSION}`;
 
     const SUBMISSION_API_URL = 'https://script.google.com/macros/s/AKfycbwCfBkuP9bH45Mqu-UIL_cdMTGAFlvI83w6a4YpDrCo93snbB6iN4saXTy7wzqZtAKQ/exec';
     const QUIZ_API_URL = 'https://script.google.com/macros/s/AKfycbxCaX9OZ4Ui86bBZEN-bheDvKfcYn_aAVNxyFKYGWl719WTVB9mSxtgDDeVK0KqwggRiQ/exec';
     const YEAR = '2026';
-
-    // ── GASウォームアップ ──
-    fetch(SUBMISSION_API_URL).catch(() => {});
 
     // ── URLパラメータ取得 ──
     const params = new URLSearchParams(location.search);
@@ -332,7 +329,7 @@
 
     // ── 撮影データ管理 ──
     // 1ページ=表裏2枚なのでtotalShots = expectedPages * 2
-    const totalShots = expectedPages * 2;
+    const totalShots = expectedPages;
     let downloadIndex = 0;
     const capturedImages = new Array(totalShots).fill(null);
     let currentShotIndex = 0;
@@ -571,32 +568,23 @@
       btn.disabled = true;
 
       try {
-        console.time('合計');
-
         let pdfBlob;
         if (!pdfDirty && pdfPromise) {
           showStatus('loading', 'PDFを準備中...');
-          console.time('PDF待機');
           pdfBlob = await pdfPromise;
-          console.timeEnd('PDF待機');
         } else {
           showStatus('loading', 'PDFを作成中...');
-          console.time('PDF生成');
           pdfBlob = await generatePDF();
-          console.timeEnd('PDF生成');
         }
 
         showStatus('loading', 'アップロード中...');
 
-        console.time('base64変換');
         const base64 = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = e => resolve(e.target.result.split(',')[1]);
           reader.onerror = reject;
           reader.readAsDataURL(pdfBlob);
         });
-        console.timeEnd('base64変換');
-        console.log('base64サイズ:', Math.round(base64.length / 1024) + 'KB');
 
         const today = new Date();
         const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -611,18 +599,8 @@
           token
         };
 
-        console.time('GASへのPOST');
-        const fileSizeMB = (base64.length * 0.75 / 1024 / 1024).toFixed(1);
-        showStatus('loading', `レポートファイル(${fileSizeMB}MB)をアップロード中...`);
-        const msgTimer1 = setTimeout(() => showStatus('loading', 'もうすぐ完了します...'), 5000);
-        const msgTimer2 = setTimeout(() => showStatus('loading', '確認作業中です...'), 10000);
         const res = await fetch(SUBMISSION_API_URL, { method: 'POST', body: JSON.stringify(payload) });
-        clearTimeout(msgTimer1);
-        clearTimeout(msgTimer2);
         const json = await res.json();
-        console.timeEnd('GASへのPOST');
-        console.timeEnd('合計');
-
         if (!json.ok) throw new Error(json.error || '保存に失敗しました');
 
         document.getElementById('panel-main').style.display = 'none';
